@@ -24,7 +24,7 @@ interface AppContextType {
   authInitialized: boolean;
   users: UserProfile[];
   addUser: (name: string, phone: string, role: UserProfile['role'], department?: string, pin?: string) => void;
-  updateUserPin: (userId: string, newPin: string) => void;
+  updateUserPin: (userId: string, newPin: string, clearMustReset?: boolean) => void;
   removeUser: (userId: string) => void;
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
@@ -148,19 +148,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role,
       department: department?.trim() || role.replace('_', ' '),
       pin: defaultPin,
+      must_reset_pin: role !== 'super_admin', // Force staff to customize their PIN on first login
       is_active: true,
     };
     setUsers(prev => [...prev, newUser]);
     addLog('SYSTEM', 'Employee Added to System', `${newUser.full_name} (${role.replace('_', ' ')} - ${newUser.phone_number})`);
   };
 
-  const updateUserPin = (userId: string, newPin: string) => {
+  const updateUserPin = (userId: string, newPin: string, clearMustReset: boolean = true) => {
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        return { ...u, pin: newPin.trim() };
+        return { 
+          ...u, 
+          pin: newPin.trim(), 
+          must_reset_pin: clearMustReset ? false : u.must_reset_pin 
+        };
       }
       return u;
     }));
+
+    if (currentUser?.id === userId) {
+      setCurrentUser(prev => prev ? { ...prev, pin: newPin.trim(), must_reset_pin: clearMustReset ? false : prev.must_reset_pin } : null);
+    }
+
     const target = users.find(u => u.id === userId);
     addLog('SYSTEM', 'Employee PIN / Password Reset', `Updated security credentials for ${target?.full_name}`);
   };

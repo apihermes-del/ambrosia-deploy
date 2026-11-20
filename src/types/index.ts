@@ -30,6 +30,7 @@ export interface UserProfile {
   role: UserRole;
   department?: string;
   pin?: string; // 4-digit secret PIN or Admin password
+  must_reset_pin?: boolean; // Flag to force/prompt PIN update on first login
   is_active: boolean;
   avatar_url?: string;
 }
