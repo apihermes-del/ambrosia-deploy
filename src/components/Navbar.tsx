@@ -24,6 +24,8 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShowLogsModal }) => {
   const { currentUser, setCurrentUserRole, users, setCurrentUser, logs } = useApp();
+  const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const allTabs = [
     { id: 'desk', label: 'Customer Care', icon: Headphones, allowedRoles: ['super_admin', 'customer_care'] },
@@ -124,57 +126,110 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
               </button>
             </div>
 
-            {/* User Profile Selector */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 bg-[#F5F5F7] hover:bg-[#E8E8ED] border border-black/[0.06] px-2.5 py-1.5 rounded-xl text-xs transition-all text-left">
+            {/* User Profile Selector (Mobile tap & Desktop click friendly) */}
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-1.5 sm:gap-2 bg-[#F5F5F7] hover:bg-[#E8E8ED] border border-black/[0.06] px-2.5 py-1.5 rounded-xl text-xs transition-all text-left"
+              >
                 <div className="w-6 h-6 rounded-lg bg-[#0071E3] text-white font-bold flex items-center justify-center text-[11px] shadow-2xs">
                   {currentUser.full_name[0]}
                 </div>
-                <div className="hidden md:block">
+                <div className="hidden sm:block">
                   <div className="text-xs font-semibold leading-tight text-[#1D1D1F]">{currentUser.full_name}</div>
                   <div className="text-[10px] text-[#86868B] capitalize">{currentUser.role.replace('_', ' ')}</div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-[#86868B] ml-0.5" />
               </button>
 
-              <div className="absolute right-0 mt-1.5 w-60 bg-white/95 backdrop-blur-xl text-gray-800 rounded-2xl shadow-xl border border-black/[0.08] hidden group-hover:block z-50 py-1.5">
-                <div className="px-3.5 py-1.5 text-[10px] font-bold text-[#86868B] uppercase tracking-wider">
-                  Select User Account
-                </div>
-                {users.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => setCurrentUser(u)}
-                    className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between hover:bg-[#F5F5F7] transition-colors ${u.id === currentUser.id ? 'bg-[#0071E3]/[0.08] font-semibold text-[#0071E3]' : 'text-[#1D1D1F]'}`}
-                  >
-                    <div>
-                      <div>{u.full_name}</div>
-                      <div className="text-[10px] text-[#86868B] capitalize">{u.role.replace('_', ' ')}</div>
+              {isUserMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsUserMenuOpen(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-2xl text-gray-800 rounded-2xl shadow-2xl border border-black/[0.08] z-50 py-2">
+                    <div className="px-3.5 py-1.5 text-[10px] font-bold text-[#86868B] uppercase tracking-wider border-b border-black/[0.04]">
+                      Switch User Account
                     </div>
-                    {u.id === currentUser.id && <span className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />}
-                  </button>
-                ))}
-              </div>
+                    
+                    {/* Role quick switcher on mobile inside dropdown */}
+                    <div className="p-2 border-b border-black/[0.04] grid grid-cols-2 gap-1 text-[11px]">
+                      <button 
+                        onClick={() => { setCurrentUserRole('customer_care'); setIsUserMenuOpen(false); }}
+                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
+                      >
+                        Care Desk
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentUserRole('cake_setting'); setIsUserMenuOpen(false); }}
+                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
+                      >
+                        Kitchen
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentUserRole('delivery_lead'); setIsUserMenuOpen(false); }}
+                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
+                      >
+                        Dispatch Lead
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentUserRole('delivery'); setIsUserMenuOpen(false); }}
+                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
+                      >
+                        Rider
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentUserRole('super_admin'); setIsUserMenuOpen(false); }}
+                        className="col-span-2 py-1 px-2 rounded-lg bg-black text-white text-center font-medium"
+                      >
+                        Super Admin
+                      </button>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto divide-y divide-black/[0.03]">
+                      {users.map(u => (
+                        <button
+                          key={u.id}
+                          onClick={() => {
+                            setCurrentUser(u);
+                            setIsUserMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between hover:bg-[#F5F5F7] transition-colors ${u.id === currentUser.id ? 'bg-[#0071E3]/[0.08] font-semibold text-[#0071E3]' : 'text-[#1D1D1F]'}`}
+                        >
+                          <div>
+                            <div>{u.full_name}</div>
+                            <div className="text-[10px] text-[#86868B] capitalize">{u.role.replace('_', ' ')}</div>
+                          </div>
+                          {u.id === currentUser.id && <span className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
           </div>
         </div>
       </div>
 
-      {/* Modern Minimalist Horizontal Tab Navigation */}
-      <div className="border-t border-black/[0.04] bg-[#F5F5F7]/80 backdrop-blur-md px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5 overflow-x-auto py-1.5 no-scrollbar">
+      {/* Modern Minimalist Horizontal Tab Navigation (Horizontal Scrollable on Mobile with Touch Momentum) */}
+      <div className="border-t border-black/[0.04] bg-[#F5F5F7] px-3 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex items-center gap-1.5 overflow-x-auto py-2 scroll-smooth -mx-1 px-1 touch-pan-x">
           {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
                   isActive 
                     ? 'bg-black text-white font-semibold shadow-xs' 
-                    : 'text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04]'
+                    : 'text-[#6E6E73] hover:text-[#1D1D1F] bg-white sm:bg-transparent border border-black/[0.05] sm:border-transparent'
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#86868B]'}`} />
