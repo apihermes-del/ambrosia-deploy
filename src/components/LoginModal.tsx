@@ -121,7 +121,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 </span>
                 <input
                   type="tel"
-                  placeholder="77362 82122"
+                  placeholder="98470 12345"
                   value={phoneNumber}
                   onChange={e => setPhoneNumber(e.target.value)}
                   className="w-full pl-12 pr-3 py-2 text-sm border border-black/[0.1] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3] font-mono font-medium"

@@ -204,10 +204,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Expected PIN check (fallback default if unset)
     const expectedPin = found.pin || (found.role === 'super_admin' ? 'ambrosia2026' : '1234');
     
-    // Allow master Super Admin override password ("ambrosia2026" or "owner2026")
-    const isMasterPassword = pin === 'ambrosia2026' || pin === 'owner2026';
-    
-    if (pin.trim() !== expectedPin && !isMasterPassword) {
+    if (pin.trim() !== expectedPin) {
       return { 
         success: false, 
         message: 'Incorrect PIN / Password. Please check with Admin or reset it.' 
