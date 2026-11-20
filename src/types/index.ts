@@ -87,6 +87,7 @@ export interface AdminSettingsConfig {
   slotDurationHours: number;
   totalDeliveryEmployees: number;
   maxDeliveriesPerDriverPerSlot: number;
+  defaultLeadTimeMinutes?: number;
 }
 
 export interface Order {

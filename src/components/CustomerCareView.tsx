@@ -17,9 +17,13 @@ import {
   Search,
   Image as ImageIcon,
   Upload,
-  X
+  X,
+  History,
+  Calendar,
+  Filter
 } from 'lucide-react';
 import { calculateDeliveryFee } from '@/lib/deliveryPricing';
+import { AuditLogModal } from '@/components/AuditLogModal';
 
 export const CustomerCareView: React.FC = () => {
   const { createOrder, updateOrder, cancelOrder, orders, settingsConfig, currentUser } = useApp();
@@ -28,6 +32,9 @@ export const CustomerCareView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [selectedSOForAudit, setSelectedSOForAudit] = useState<string | null>(null);
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('all');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('all');
 
   // Form State
   const [tallySONumber, setTallySONumber] = useState('');
@@ -100,7 +107,7 @@ export const CustomerCareView: React.FC = () => {
         quantity: 1,
         cake_message: '',
         special_instructions: '',
-        lead_time_minutes: 120,
+        lead_time_minutes: settingsConfig.defaultLeadTimeMinutes || 120,
       }
     ]);
   };
@@ -275,13 +282,31 @@ export const CustomerCareView: React.FC = () => {
 
   const filteredOrders = orders.filter(o => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      o.tally_so_number.toLowerCase().includes(q) ||
-      o.customer_name.toLowerCase().includes(q) ||
-      o.customer_phone.includes(q) ||
-      o.delivery_area.toLowerCase().includes(q)
-    );
+    if (q) {
+      const match = (
+        o.tally_so_number.toLowerCase().includes(q) ||
+        o.customer_name.toLowerCase().includes(q) ||
+        o.customer_phone.includes(q) ||
+        o.delivery_area.toLowerCase().includes(q)
+      );
+      if (!match) return false;
+    }
+
+    if (historyDateFilter !== 'all') {
+      if (o.delivery_date !== historyDateFilter) return false;
+    }
+
+    if (historyStatusFilter !== 'all') {
+      if (historyStatusFilter === 'active') {
+        if (['delivered', 'collected', 'cancelled'].includes(o.status)) return false;
+      } else if (historyStatusFilter === 'completed') {
+        if (!['delivered', 'collected'].includes(o.status)) return false;
+      } else if (o.status !== historyStatusFilter) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   return (
@@ -324,7 +349,7 @@ export const CustomerCareView: React.FC = () => {
                 : 'text-amber-900 hover:bg-amber-200/70'
             }`}
           >
-            Manage / Edit Orders ({orders.filter(o => !['delivered', 'collected', 'cancelled'].includes(o.status)).length})
+            Order Directory & History ({orders.length})
           </button>
         </div>
       </div>
@@ -829,20 +854,74 @@ export const CustomerCareView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. MANAGE / EDIT ACTIVE ORDERS VIEW */}
+      {/* 2. MANAGE / EDIT & HISTORICAL ORDERS VIEW */}
       {/* ========================================================================= */}
       {activeTab === 'manage_orders' && (
         <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative w-72">
+          {/* Controls Bar: Search + Date Selector + Status Filter */}
+          <div className="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search active orders..."
+                placeholder="Search by Tally SO #, Customer, Phone, or Area..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg bg-white outline-none"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl bg-[#F5F5F7] focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all font-mono"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Date Filter */}
+              <div className="flex items-center gap-1.5 bg-[#F5F5F7] border border-gray-200 px-2.5 py-1.5 rounded-xl text-xs">
+                <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                <span className="text-[11px] font-medium text-gray-600">Date:</span>
+                <input
+                  type="date"
+                  value={historyDateFilter === 'all' ? '' : historyDateFilter}
+                  onChange={e => setHistoryDateFilter(e.target.value || 'all')}
+                  className="bg-transparent text-xs font-semibold text-gray-900 outline-none cursor-pointer"
+                />
+                {historyDateFilter !== 'all' && (
+                  <button
+                    onClick={() => setHistoryDateFilter('all')}
+                    className="text-[10px] text-amber-700 hover:underline font-bold ml-1"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5 bg-[#F5F5F7] border border-gray-200 px-2.5 py-1.5 rounded-xl text-xs">
+                <Filter className="w-3.5 h-3.5 text-gray-500" />
+                <select
+                  value={historyStatusFilter}
+                  onChange={e => setHistoryStatusFilter(e.target.value)}
+                  className="bg-transparent text-xs font-semibold text-gray-900 outline-none cursor-pointer"
+                >
+                  <option value="all">All Statuses ({orders.length})</option>
+                  <option value="active">Active Only</option>
+                  <option value="completed">Delivered / Collected</option>
+                  <option value="new">New</option>
+                  <option value="preparing">Preparing</option>
+                  <option value="ready_for_pickup">Ready for Pickup</option>
+                  <option value="out_for_delivery">Out for Delivery</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <span className="text-xs font-semibold text-gray-500 px-2">
+                Showing {filteredOrders.length}
+              </span>
             </div>
           </div>
 
@@ -857,86 +936,127 @@ export const CustomerCareView: React.FC = () => {
                     <th className="py-3 px-4">Items & Design</th>
                     <th className="py-3 px-4">Stage</th>
                     <th className="py-3 px-4">Payment</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-right">Order Audit & Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredOrders.map(order => {
-                    const canEdit = !['ready_for_pickup', 'out_for_delivery', 'delivered', 'collected', 'cancelled'].includes(order.status);
-                    const hasRef = Boolean(order.reference_image_url || order.items.some(i => i.reference_image_url));
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-gray-400">
+                        No orders match the current filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map(order => {
+                      const canEdit = !['ready_for_pickup', 'out_for_delivery', 'delivered', 'collected', 'cancelled'].includes(order.status);
+                      const hasRef = Boolean(order.reference_image_url || order.items.some(i => i.reference_image_url));
 
-                    return (
-                      <tr key={order.id} className="hover:bg-amber-50/20">
-                        <td className="py-3 px-4 font-mono font-bold text-gray-900">
-                          {order.tally_so_number}
-                          {order.is_edited_flag && (
-                            <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded border border-amber-300">
-                              EDITED
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-gray-800">{order.delivery_time_slot}</div>
-                          <div className="text-[10px] text-gray-500">{order.delivery_date}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-gray-900">{order.customer_name}</div>
-                          <div className="text-[11px] text-gray-500">{order.delivery_area}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-gray-700">
-                            {order.items.map(i => i.item_name).join(', ')}
-                          </div>
-                          {hasRef && (
-                            <span className="inline-block mt-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
-                              📷 Design Attached
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            order.status === 'ready_for_pickup' ? 'bg-emerald-100 text-emerald-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
-                            {order.status.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold">
-                          {order.payment_status === 'credit' ? (
-                            <span className="text-purple-700 font-bold">CREDIT</span>
-                          ) : (
-                            <span>₹{order.pending_amount} DUE</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {canEdit ? (
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => startEditOrder(order)}
-                                className="px-2.5 py-1 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors flex items-center gap-1"
-                              >
-                                <Edit3 className="w-3 h-3" /> Edit
-                              </button>
-                              <button
-                                onClick={() => handleCancel(order)}
-                                className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
-                              >
-                                Cancel
-                              </button>
+                      return (
+                        <tr key={order.id} className="hover:bg-amber-50/20 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                            <div>{order.tally_so_number}</div>
+                            {order.is_edited_flag && (
+                              <span className="inline-block mt-0.5 text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded border border-amber-300">
+                                EDITED
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-gray-800">{order.delivery_time_slot}</div>
+                            <div className="text-[10px] text-gray-500 font-medium">
+                              📅 {new Date(order.delivery_date).toLocaleDateString('en-IN', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
                             </div>
-                          ) : (
-                            <span className="text-[10px] text-gray-400 italic">Locked in operations</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-gray-900">{order.customer_name}</div>
+                            <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="truncate max-w-[140px]">{order.delivery_area}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="text-gray-700 max-w-[200px] truncate">
+                              {order.items.map(i => `${i.item_name} (${i.size_or_weight})`).join(', ')}
+                            </div>
+                            {hasRef && (
+                              <span className="inline-block mt-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                                📷 Design Attached
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                              order.status === 'cancelled' ? 'bg-red-100 text-red-800 border border-red-200' :
+                              order.status === 'delivered' || order.status === 'collected' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                              order.status === 'ready_for_pickup' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                              order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                              'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}>
+                              {order.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-bold">
+                            {order.payment_status === 'credit' ? (
+                              <span className="text-purple-700 font-bold">CREDIT</span>
+                            ) : order.pending_amount > 0 ? (
+                              <span className="text-rose-600 font-bold">₹{order.pending_amount} DUE</span>
+                            ) : (
+                              <span className="text-emerald-700 font-semibold">PAID</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* 1-Tap Inspect SO Audit Logs Button */}
+                              <button
+                                onClick={() => setSelectedSOForAudit(order.tally_so_number)}
+                                title={`Inspect audit history for ${order.tally_so_number}`}
+                                className="px-2.5 py-1 text-xs font-semibold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                              >
+                                <History className="w-3.5 h-3.5" />
+                                <span>Audit Log</span>
+                              </button>
+
+                              {canEdit ? (
+                                <>
+                                  <button
+                                    onClick={() => startEditOrder(order)}
+                                    className="px-2.5 py-1 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors flex items-center gap-1"
+                                  >
+                                    <Edit3 className="w-3 h-3" /> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancel(order)}
+                                    className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
+      )}
+
+      {/* SO-Specific Audit Trail Modal */}
+      {selectedSOForAudit && (
+        <AuditLogModal
+          isOpen={Boolean(selectedSOForAudit)}
+          onClose={() => setSelectedSOForAudit(null)}
+          initialSearchSO={selectedSOForAudit}
+        />
       )}
 
     </div>

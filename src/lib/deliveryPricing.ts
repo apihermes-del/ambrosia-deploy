@@ -14,6 +14,7 @@ export const defaultSettingsConfig: AdminSettingsConfig = {
   slotDurationHours: 2,
   totalDeliveryEmployees: 4,
   maxDeliveriesPerDriverPerSlot: 1,
+  defaultLeadTimeMinutes: 120,
 };
 
 export function generateTimeSlots(openingTime: string, closingTime: string, durationHours: number): string[] {
