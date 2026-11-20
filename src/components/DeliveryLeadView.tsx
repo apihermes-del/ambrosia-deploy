@@ -225,9 +225,9 @@ export const DeliveryLeadView: React.FC = () => {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="apple-card overflow-hidden">
-        <div className="p-4 border-b border-black/[0.06] flex items-center justify-between bg-[#FBFBFD]">
+      {/* Orders List: Mobile-First Card View with Desktop Table Option */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-[#1D1D1F]">
               Home Deliveries • {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -238,128 +238,155 @@ export const DeliveryLeadView: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#F5F5F7] text-[#86868B] font-medium border-b border-black/[0.06]">
-              <tr>
-                <th className="py-3 px-4">SO #</th>
-                <th className="py-3 px-4">Slot</th>
-                <th className="py-3 px-4">Customer & Suburb</th>
-                <th className="py-3 px-4">Products</th>
-                <th className="py-3 px-4">Payment Balance</th>
-                <th className="py-3 px-4">Vehicle / Driver</th>
-                <th className="py-3 px-4">WhatsApp Note</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/[0.04]">
-              {dateHomeOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#86868B]">
-                    No home deliveries scheduled for {selectedDate}.
-                  </td>
-                </tr>
-              ) : (
-                dateHomeOrders.map(order => {
-                  const isFourWheeler = order.assignment_type === 'four_wheeler';
-                  const isPorter = order.assignment_type === 'porter_uber';
-                  const isDriver = order.assignment_type === 'driver';
+        {dateHomeOrders.length === 0 ? (
+          <div className="apple-card p-12 text-center text-[#86868B] text-xs">
+            No home deliveries scheduled for {selectedDate}.
+          </div>
+        ) : (
+          /* Mobile Card Grid (1 col on mobile, 2 col on tablet/desktop) */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {dateHomeOrders.map(order => {
+              const isFourWheeler = order.assignment_type === 'four_wheeler';
+              const isPorter = order.assignment_type === 'porter_uber';
+              const isDriver = order.assignment_type === 'driver';
+              const isUnassigned = order.assignment_type === 'unassigned' || !order.assigned_delivery_user_id;
 
-                  return (
-                    <tr key={order.id} className="hover:bg-[#F5F5F7]/50 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-semibold text-[#1D1D1F]">
-                        {order.tally_so_number}
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-[#1D1D1F]">
-                        {order.delivery_time_slot}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-[#1D1D1F]">{order.customer_name}</div>
-                        <div className="text-[11px] text-[#6E6E73] flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-[#0071E3]" />
-                          {order.delivery_area}
+              return (
+                <div
+                  key={order.id}
+                  className={`apple-card p-4 flex flex-col justify-between transition-all ${
+                    isUnassigned
+                      ? 'border-amber-500/40 bg-gradient-to-b from-amber-500/[0.03] to-white'
+                      : 'border-black/[0.06] bg-white'
+                  }`}
+                >
+                  {/* Top Bar: SO #, Slot & Balance */}
+                  <div>
+                    <div className="flex items-start justify-between gap-2 border-b border-black/[0.05] pb-2.5">
+                      <div>
+                        <div className="font-mono font-bold text-sm text-[#1D1D1F]">
+                          {order.tally_so_number}
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-0.5 max-w-[200px]">
-                          {order.items.map(i => (
-                            <div key={i.id} className="text-[#424245] truncate">
-                              • {i.item_name} ({i.size_or_weight})
-                            </div>
-                          ))}
+                        <div className="text-[11px] font-semibold text-[#0071E3] mt-0.5">
+                          🕒 {order.delivery_time_slot}
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold">
+                      </div>
+
+                      <div className="text-right">
                         {order.payment_status === 'credit' ? (
-                          <span className="text-purple-700">Credit Account</span>
+                          <span className="inline-block px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-semibold rounded-md border border-purple-200">
+                            Credit Account
+                          </span>
                         ) : order.pending_amount > 0 ? (
-                          <span className="text-rose-600">₹{order.pending_amount} DUE</span>
+                          <span className="inline-block px-2 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-bold rounded-md border border-rose-200">
+                            ₹{order.pending_amount} DUE
+                          </span>
                         ) : (
-                          <span className="text-emerald-600">Paid in Full</span>
+                          <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-md border border-emerald-200">
+                            Paid in Full
+                          </span>
                         )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1.5">
-                          <select
-                            value={order.assignment_type}
-                            onChange={e => {
-                              const newType = e.target.value as AssignmentType;
-                              if (newType === 'driver') {
-                                assignVehicleOrDriver(order.id, 'driver', onDutyDeliveryBoys[0]?.id);
-                              } else {
-                                assignVehicleOrDriver(order.id, newType);
-                              }
-                            }}
-                            className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-black/[0.08] bg-white font-medium"
-                          >
-                            <option value="unassigned">-- Select Vehicle --</option>
-                            <option value="driver">🛵 Bike Rider (In-house)</option>
-                            <option value="four_wheeler">🚙 4-Wheeler AC Cab</option>
-                            <option value="porter_uber">📦 Porter / Uber</option>
-                          </select>
+                      </div>
+                    </div>
 
-                          {isDriver && (
-                            <select
-                              value={order.assigned_delivery_user_id || ''}
-                              onChange={e => assignVehicleOrDriver(order.id, 'driver', e.target.value)}
-                              className="w-full text-xs py-1.5 px-2.5 rounded-xl border border-[#0071E3]/30 bg-[#0071E3]/[0.05] text-[#0071E3] font-semibold"
-                            >
-                              <option value="">Select On-Duty Rider...</option>
-                              {onDutyDeliveryBoys.map(d => (
-                                <option key={d.id} value={d.id}>{d.full_name}</option>
-                              ))}
-                            </select>
-                          )}
+                    {/* Customer & Location */}
+                    <div className="py-2.5 border-b border-black/[0.05]">
+                      <div className="font-semibold text-xs text-[#1D1D1F] flex items-center justify-between">
+                        <span>{order.customer_name}</span>
+                        <a
+                          href={`tel:${order.customer_phone}`}
+                          className="text-[11px] text-[#0071E3] font-medium"
+                        >
+                          {order.customer_phone}
+                        </a>
+                      </div>
+                      <div className="text-xs text-[#424245] flex items-center gap-1 mt-1 font-medium">
+                        <MapPin className="w-3.5 h-3.5 text-[#0071E3] shrink-0" />
+                        <span className="truncate">{order.delivery_area}</span>
+                        {order.delivery_distance_km ? (
+                          <span className="text-[10px] text-[#86868B]">({order.delivery_distance_km} km)</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Products preview */}
+                    <div className="py-2 border-b border-black/[0.05] space-y-1">
+                      {order.items.map(item => (
+                        <div key={item.id} className="text-[11px] text-[#424245] flex items-center justify-between">
+                          <span className="font-medium truncate mr-2">• {item.item_name}</span>
+                          <span className="text-[10px] bg-black/[0.04] px-1.5 py-0.5 rounded text-[#6E6E73] shrink-0">
+                            {item.size_or_weight}
+                          </span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {isFourWheeler ? (
-                          <button
-                            onClick={() => handleCopyFourWheelerText(order)}
-                            className="px-2.5 py-1.5 bg-black hover:bg-black/80 text-white rounded-xl font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-all"
-                          >
-                            {copiedOrderId === order.id ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                Copy Template
-                              </>
-                            )}
-                          </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Allocation Controls: Full width touch-friendly for mobile */}
+                  <div className="pt-3 space-y-2 mt-auto">
+                    <label className="text-[10px] uppercase tracking-wider font-semibold text-[#86868B] block">
+                      Allotment / Vehicle
+                    </label>
+
+                    {/* Vehicle Type Picker */}
+                    <select
+                      value={order.assignment_type}
+                      onChange={e => {
+                        const newType = e.target.value as AssignmentType;
+                        if (newType === 'driver') {
+                          assignVehicleOrDriver(order.id, 'driver', onDutyDeliveryBoys[0]?.id);
+                        } else {
+                          assignVehicleOrDriver(order.id, newType);
+                        }
+                      }}
+                      className="w-full text-xs py-2 px-3 rounded-xl border border-black/[0.1] bg-white font-medium focus:ring-2 focus:ring-[#0071E3] outline-none shadow-2xs"
+                    >
+                      <option value="unassigned">⚠️ Unassigned</option>
+                      <option value="driver">🛵 Bike Rider (In-house)</option>
+                      <option value="four_wheeler">🚙 4-Wheeler AC Cab</option>
+                      <option value="porter_uber">📦 Porter / Uber</option>
+                    </select>
+
+                    {/* In-House Rider Selection */}
+                    {isDriver && (
+                      <select
+                        value={order.assigned_delivery_user_id || ''}
+                        onChange={e => assignVehicleOrDriver(order.id, 'driver', e.target.value)}
+                        className="w-full text-xs py-2 px-3 rounded-xl border border-[#0071E3]/40 bg-[#0071E3]/[0.06] text-[#0071E3] font-semibold focus:ring-2 focus:ring-[#0071E3] outline-none shadow-2xs"
+                      >
+                        <option value="">-- Choose On-Duty Rider --</option>
+                        {onDutyDeliveryBoys.map(d => (
+                          <option key={d.id} value={d.id}>🛵 {d.full_name}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* 4-Wheeler WhatsApp Copy Button */}
+                    {isFourWheeler && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyFourWheelerText(order)}
+                        className="w-full py-2 px-3 bg-black hover:bg-black/90 active:scale-[0.98] text-white rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all"
+                      >
+                        {copiedOrderId === order.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>WhatsApp Note Copied!</span>
+                          </>
                         ) : (
-                          <span className="text-[#86868B] text-[11px]">-</span>
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy 4-Wheeler Note</span>
+                          </>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
     </div>
