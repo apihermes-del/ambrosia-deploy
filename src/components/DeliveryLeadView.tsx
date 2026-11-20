@@ -28,7 +28,8 @@ export const DeliveryLeadView: React.FC = () => {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
   const isAuthorized = currentUser && ['super_admin', 'delivery_lead', 'customer_care'].includes(currentUser.role);
-  const deliveryBoys = users.filter(u => u.role === 'delivery');
+  // Both drivers and delivery leads can be assigned as active riders for delivery
+  const deliveryBoys = users.filter(u => u.role === 'delivery' || u.role === 'delivery_lead');
   
   const onDutyDriverIdsForDate = getOnDutyDriversForDate(selectedDate);
   const onDutyDeliveryBoys = deliveryBoys.filter(u => onDutyDriverIdsForDate.includes(u.id));
@@ -356,7 +357,9 @@ export const DeliveryLeadView: React.FC = () => {
                       >
                         <option value="">-- Choose On-Duty Rider --</option>
                         {onDutyDeliveryBoys.map(d => (
-                          <option key={d.id} value={d.id}>🛵 {d.full_name}</option>
+                          <option key={d.id} value={d.id}>
+                            🛵 {d.full_name} {d.role === 'delivery_lead' ? '(Lead & Rider)' : ''}
+                          </option>
                         ))}
                       </select>
                     )}

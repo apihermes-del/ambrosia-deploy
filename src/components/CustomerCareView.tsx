@@ -24,11 +24,12 @@ import {
 } from 'lucide-react';
 import { calculateDeliveryFee } from '@/lib/deliveryPricing';
 import { AuditLogModal } from '@/components/AuditLogModal';
+import { DeliveryCalendarPricingView } from '@/components/DeliveryCalendarPricingView';
 
 export const CustomerCareView: React.FC = () => {
   const { createOrder, updateOrder, cancelOrder, orders, settingsConfig, currentUser } = useApp();
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'new_booking' | 'manage_orders'>('new_booking');
+  const [activeTab, setActiveTab] = useState<'new_booking' | 'manage_orders' | 'calendar_rates'>('new_booking');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -349,7 +350,18 @@ export const CustomerCareView: React.FC = () => {
                 : 'text-amber-900 hover:bg-amber-200/70'
             }`}
           >
-            Order Directory & History ({orders.length})
+            Order History ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('calendar_rates')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'calendar_rates' 
+                ? 'bg-amber-600 text-white shadow-sm' 
+                : 'text-amber-900 hover:bg-amber-200/70'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Slot Calendar & Rates</span>
           </button>
         </div>
       </div>
@@ -1047,6 +1059,15 @@ export const CustomerCareView: React.FC = () => {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. SLOT CALENDAR & RATES (Nested view) */}
+      {/* ========================================================================= */}
+      {activeTab === 'calendar_rates' && (
+        <div className="mt-6">
+          <DeliveryCalendarPricingView />
         </div>
       )}
 

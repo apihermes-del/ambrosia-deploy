@@ -26,14 +26,22 @@ export const AdminCloseoutView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'driver_closeout' | 'outlet_cashier' | 'tally_si'>('driver_closeout');
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [siInput, setSiInput] = useState('');
-  const [selectedDriverId, setSelectedDriverId] = useState<string>('u5');
 
-  const deliveryBoys = users.filter(u => u.role === 'delivery');
-  const selectedDriver = deliveryBoys.find(d => d.id === selectedDriverId) || deliveryBoys[0];
+  // Drivers and Delivery Leads who do delivery trips
+  const deliveryBoys = users.filter(u => u.role === 'delivery' || u.role === 'delivery_lead');
+  
+  // If user is a driver or delivery_lead, default or constrain selection
+  const isIndividualRiderView = currentUser?.role === 'delivery';
+  const initialDriverId = isIndividualRiderView ? currentUser.id : (currentUser?.role === 'delivery_lead' ? currentUser.id : 'u5');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(initialDriverId);
+
+  // If a driver logs in, strictly force them to only inspect their own account
+  const effectiveDriverId = isIndividualRiderView ? (currentUser?.id || selectedDriverId) : selectedDriverId;
+  const selectedDriver = deliveryBoys.find(d => d.id === effectiveDriverId) || deliveryBoys[0];
 
   // Orders delivered by selected driver
   const driverDeliveredOrders = orders.filter(
-    o => o.assigned_delivery_user_id === selectedDriverId && o.status === 'delivered'
+    o => o.assigned_delivery_user_id === effectiveDriverId && o.status === 'delivered'
   );
 
   // Driver collections breakdown
@@ -93,42 +101,49 @@ export const AdminCloseoutView: React.FC = () => {
           </p>
         </div>
 
-        {/* Sub-tab selection */}
-        <div className="flex items-center gap-1.5 bg-amber-100/80 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveSubTab('driver_closeout')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              activeSubTab === 'driver_closeout' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5" />
-            1. Driver Day Close
-          </button>
-          <button
-            onClick={() => setActiveSubTab('outlet_cashier')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              activeSubTab === 'outlet_cashier' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5" />
-            2. Main Outlet Cashier Handover
-          </button>
-          <button
-            onClick={() => setActiveSubTab('tally_si')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              activeSubTab === 'tally_si' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
-            }`}
-          >
-            <FileCheck className="w-3.5 h-3.5" />
-            3. Tally SI Closeout
-          </button>
-        </div>
+        {/* Sub-tab selection - hidden or simplified for individual drivers */}
+        {!isIndividualRiderView ? (
+          <div className="flex items-center gap-1.5 bg-amber-100/80 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveSubTab('driver_closeout')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeSubTab === 'driver_closeout' 
+                  ? 'bg-amber-600 text-white shadow-sm' 
+                  : 'text-amber-900 hover:bg-amber-200/70'
+              }`}
+            >
+              <Truck className="w-3.5 h-3.5" />
+              1. Driver Day Close
+            </button>
+            <button
+              onClick={() => setActiveSubTab('outlet_cashier')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeSubTab === 'outlet_cashier' 
+                  ? 'bg-amber-600 text-white shadow-sm' 
+                  : 'text-amber-900 hover:bg-amber-200/70'
+              }`}
+            >
+              <Store className="w-3.5 h-3.5" />
+              2. Main Outlet Cashier Handover
+            </button>
+            <button
+              onClick={() => setActiveSubTab('tally_si')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeSubTab === 'tally_si' 
+                  ? 'bg-amber-600 text-white shadow-sm' 
+                  : 'text-amber-900 hover:bg-amber-200/70'
+              }`}
+            >
+              <FileCheck className="w-3.5 h-3.5" />
+              3. Tally SI Closeout
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 bg-emerald-100/90 text-emerald-900 px-3 py-1.5 rounded-xl text-xs font-semibold">
+            <Truck className="w-4 h-4 text-emerald-700" />
+            <span>My Daily Delivery Cash & Settlement</span>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -148,19 +163,27 @@ export const AdminCloseoutView: React.FC = () => {
                 </p>
               </div>
 
-              {/* Select Driver */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-700">Select Rider:</span>
-                <select
-                  value={selectedDriverId}
-                  onChange={e => setSelectedDriverId(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white"
-                >
-                  {deliveryBoys.map(d => (
-                    <option key={d.id} value={d.id}>{d.full_name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Select Driver: only super_admin, customer_care, and delivery_lead can pick other drivers */}
+              {!isIndividualRiderView ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-700">Select Rider:</span>
+                  <select
+                    value={effectiveDriverId}
+                    onChange={e => setSelectedDriverId(e.target.value)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white"
+                  >
+                    {deliveryBoys.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.full_name} {d.role === 'delivery_lead' ? '(Lead & Rider)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                  Rider: {selectedDriver?.full_name || currentUser?.full_name}
+                </div>
+              )}
             </div>
 
             {/* Selected Driver Collection Card */}
@@ -191,14 +214,14 @@ export const AdminCloseoutView: React.FC = () => {
                 
                 <button
                   disabled={isDriverClosed || driverDeliveredOrders.length === 0}
-                  onClick={() => closeDriverDay(selectedDriverId)}
+                  onClick={() => closeDriverDay(effectiveDriverId)}
                   className={`w-full py-2 text-xs font-bold rounded-lg mt-3 transition-colors ${
                     isDriverClosed
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
                   }`}
                 >
-                  {isDriverClosed ? '✓ Shift Day Closed' : `Settle & Close ${selectedDriver.full_name.split(' ')[0]}'s Day`}
+                  {isDriverClosed ? '✓ Shift Day Closed' : `Settle & Close ${selectedDriver?.full_name?.split(' ')[0] || 'Rider'}'s Day`}
                 </button>
               </div>
             </div>
