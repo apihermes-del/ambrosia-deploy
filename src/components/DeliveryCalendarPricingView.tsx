@@ -13,7 +13,9 @@ import {
   Info,
   Car,
   Navigation,
-  Sparkles
+  Sparkles,
+  Loader2,
+  Globe
 } from 'lucide-react';
 import { 
   trivandrumLocations, 
@@ -21,7 +23,8 @@ import {
   estimateRoundTripMinutes,
   generateTimeSlots,
   slotColorThemes,
-  getGoogleMapsNavigationUrl
+  getGoogleMapsNavigationUrl,
+  calculateRoadDistanceBetweenCoords
 } from '@/lib/deliveryPricing';
 
 export const DeliveryCalendarPricingView: React.FC = () => {
@@ -30,23 +33,26 @@ export const DeliveryCalendarPricingView: React.FC = () => {
   // Date filter
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-  // Dynamic Free-form Address Input & Autocomplete State
-  const [addressSearchInput, setAddressSearchInput] = useState<string>('Sreekaryam, Trivandrum');
-  const [customDistanceKm, setCustomDistanceKm] = useState<number>(9.5);
+  // Dynamic Free-form Address Input State
+  const [addressSearchInput, setAddressSearchInput] = useState<string>('Menamkulam, Trivandrum');
+  const [customDistanceKm, setCustomDistanceKm] = useState<number>(16.2);
   const [isTypingLocation, setIsTypingLocation] = useState(false);
-  const [matchedLocationName, setMatchedLocationName] = useState<string>('Sreekaryam / Loyola');
+  const [matchedLocationName, setMatchedLocationName] = useState<string>('Menamkulam / Marian Engineering College');
+  
+  // Free Live Online Geocoding state (OpenStreetMap / Nominatim)
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [onlineResultNotice, setOnlineResultNotice] = useState<string | null>(null);
 
-  // Dynamically generate slots from admin opening/closing/duration settings
+  // Generate slots from admin settings
   const dynamicSlots = generateTimeSlots(
     settingsConfig.openingTime,
     settingsConfig.closingTime,
     settingsConfig.slotDurationHours
   );
 
-  // Maximum slot capacity = total delivery drivers * deliveries per driver per slot
   const slotCapacity = settingsConfig.totalDeliveryEmployees * (settingsConfig.maxDeliveriesPerDriverPerSlot || 1);
 
-  // CRITICAL FIX: ONLY filter home_delivery orders! Exclude outlet pickups completely!
+  // Exclude outlet pickups completely from the calendar
   const dateHomeDeliveryOrders = orders.filter(
     o => o.order_type === 'home_delivery' && 
          o.delivery_date === selectedDate && 
@@ -58,15 +64,18 @@ export const DeliveryCalendarPricingView: React.FC = () => {
     loc.name.toLowerCase().includes(addressSearchInput.toLowerCase().trim())
   );
 
-  // Auto-detect matching locality distance from free text
   const handleAddressTextChange = (text: string) => {
     setAddressSearchInput(text);
     setIsTypingLocation(true);
+    setOnlineResultNotice(null);
 
     const lower = text.toLowerCase().trim();
+    if (!lower) return;
+
+    // Search against comprehensive local dataset first
     const found = trivandrumLocations.find(l => 
-      lower.includes(l.name.toLowerCase().split('/')[0].trim()) ||
-      l.name.toLowerCase().includes(lower)
+      l.name.toLowerCase().includes(lower) ||
+      lower.includes(l.name.toLowerCase().split('/')[0].trim())
     );
 
     if (found) {
@@ -80,12 +89,57 @@ export const DeliveryCalendarPricingView: React.FC = () => {
     setCustomDistanceKm(loc.distanceKm);
     setMatchedLocationName(loc.name);
     setIsTypingLocation(false);
+    setOnlineResultNotice(null);
+  };
+
+  // 100% FREE Live Online Distance Lookup (Powered by OpenStreetMap Nominatim)
+  const handleLiveOnlineLookup = async () => {
+    if (!addressSearchInput.trim()) return;
+    setIsSearchingOnline(true);
+    setOnlineResultNotice(null);
+
+    try {
+      const query = encodeURIComponent(`${addressSearchInput.trim()}, Thiruvananthapuram, Kerala, India`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+
+      if (!response.ok) throw new Error('Search failed');
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const place = data[0];
+        const destLat = parseFloat(place.lat);
+        const destLon = parseFloat(place.lon);
+
+        // Calculate distance from Ambrosia Bakery Junction (lat: 8.4998, lng: 76.9535)
+        const computedKm = calculateRoadDistanceBetweenCoords(
+          settingsConfig.bakeryCoordinates.lat,
+          settingsConfig.bakeryCoordinates.lng,
+          destLat,
+          destLon
+        );
+
+        setCustomDistanceKm(computedKm);
+        setMatchedLocationName(place.name || place.display_name.split(',')[0]);
+        setOnlineResultNotice(`Live GPS Located: "${place.display_name.split(',').slice(0, 3).join(',')}" (~${computedKm} km from Bakery Junction)`);
+        setIsTypingLocation(false);
+      } else {
+        setOnlineResultNotice('Location pin not found. You can adjust the distance slider manually or verify on Google Maps.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOnlineResultNotice('Could not connect to map service. Use the distance slider below.');
+    } finally {
+      setIsSearchingOnline(false);
+    }
   };
 
   const calculatedFee = calculateDeliveryFee(customDistanceKm, settingsConfig);
   const roundTripTime = estimateRoundTripMinutes(customDistanceKm);
 
-  // Construct dynamic Google Maps Route URL
   const googleMapsRouteUrl = getGoogleMapsNavigationUrl(
     addressSearchInput,
     matchedLocationName || 'Trivandrum'
@@ -104,7 +158,7 @@ export const DeliveryCalendarPricingView: React.FC = () => {
             </span>
           </h1>
           <p className="text-xs text-gray-600 mt-0.5">
-            Color-coded time slots for quick visual differentiation. Outlet pickups are excluded to strictly monitor driver capacity.
+            Color-coded slots for quick visual differentiation. Broadened search covers every locality across Trivandrum.
           </p>
         </div>
 
@@ -121,7 +175,7 @@ export const DeliveryCalendarPricingView: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid: Color-coded Calendar on Left + Free Address Distance Engine on Right */}
+      {/* Grid: Color-coded Calendar on Left + Broadened Distance Engine on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ========================================================================= */}
@@ -157,7 +211,6 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                     key={slot} 
                     className={`rounded-xl border-2 ${colorTheme.border} ${colorTheme.bg} overflow-hidden transition-all shadow-xs`}
                   >
-                    {/* Slot Header Banner */}
                     <div className={`px-3 py-2 ${colorTheme.header} flex items-center justify-between border-b ${colorTheme.border}`}>
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-current opacity-80" />
@@ -175,7 +228,6 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Booked Deliveries in this Slot */}
                     <div className="p-3">
                       {slotOrders.length === 0 ? (
                         <div className="text-[11px] text-gray-400 italic py-1">
@@ -219,7 +271,7 @@ export const DeliveryCalendarPricingView: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* RIGHT: TYPE-ANY-DESTINATION DISTANCE & RATE ENGINE (5 COLS) */}
+        {/* RIGHT: BROADENED TRIVANDRUM DISTANCE & RATE ENGINE (5 COLS) */}
         {/* ========================================================================= */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -229,7 +281,7 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                 Live Distance & Rate Engine
               </h2>
               <p className="text-[11px] text-gray-500 mt-0.5">
-                Type any street, landmark, or suburb in Trivandrum to compute delivery fee & transit time.
+                Now broadened to 120+ Trivandrum locations with free GPS live lookup for any unknown pin.
               </p>
             </div>
 
@@ -242,28 +294,53 @@ export const DeliveryCalendarPricingView: React.FC = () => {
               </div>
             </div>
 
-            {/* Free-form Address Input with Autocomplete dropdown */}
+            {/* Free-form Address Input with Autocomplete & Live Lookup */}
             <div className="space-y-3 relative">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Type Customer Address or Suburb:
+                  Type Any Address, Suburb or Colony:
                 </label>
-                <div className="relative">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    placeholder="e.g. Kowdiar, Medical College, Sreekaryam, Technopark..."
-                    value={addressSearchInput}
-                    onChange={e => handleAddressTextChange(e.target.value)}
-                    onFocus={() => setIsTypingLocation(true)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-medium bg-white"
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Menamkulam, Paruthipara, Vazhayila, Technopark..."
+                      value={addressSearchInput}
+                      onChange={e => handleAddressTextChange(e.target.value)}
+                      onFocus={() => setIsTypingLocation(true)}
+                      onKeyDown={e => e.key === 'Enter' && handleLiveOnlineLookup()}
+                      className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-medium bg-white"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleLiveOnlineLookup}
+                    disabled={isSearchingOnline}
+                    className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-colors whitespace-nowrap"
+                    title="Search via OpenStreetMap"
+                  >
+                    {isSearchingOnline ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Globe className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">GPS Pin</span>
+                  </button>
                 </div>
 
-                {/* Autocomplete Dropdown */}
+                {onlineResultNotice && (
+                  <div className="mt-1.5 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span>{onlineResultNotice}</span>
+                  </div>
+                )}
+
+                {/* Instant Autocomplete Suggestions */}
                 {isTypingLocation && searchResults.length > 0 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 py-1 divide-y divide-gray-50">
-                    {searchResults.map(loc => (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto z-50 py-1 divide-y divide-gray-50">
+                    {searchResults.slice(0, 10).map(loc => (
                       <button
                         key={loc.name}
                         type="button"
@@ -274,33 +351,38 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                         <span className="text-[11px] font-mono text-amber-800 font-bold">~{loc.distanceKm} km</span>
                       </button>
                     ))}
+                    {searchResults.length > 10 && (
+                      <div className="px-3 py-1 text-[10px] text-gray-400 bg-gray-50 text-center">
+                        + {searchResults.length - 10} more matches. Keep typing to filter...
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Road Distance Slider / Input */}
+              {/* Road Distance Fine-Tuning Slider */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-gray-700 mb-1">
-                  <span>Computed Road Distance:</span>
-                  <span className="font-bold font-mono text-amber-900">{customDistanceKm} km</span>
+                  <span>Computed Distance from Bakery:</span>
+                  <span className="font-bold font-mono text-amber-900 text-sm">{customDistanceKm} km</span>
                 </div>
                 <input
                   type="range"
                   min="0.5"
-                  max="35"
+                  max="45"
                   step="0.1"
                   value={customDistanceKm}
                   onChange={e => setCustomDistanceKm(Number(e.target.value))}
                   className="w-full accent-amber-600 cursor-pointer"
                 />
                 <div className="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
-                  <span>0.5 km (City Center)</span>
-                  <span>5 km (Free Cutoff)</span>
-                  <span>35 km (Outer Trivandrum)</span>
+                  <span>0.5 km (Bakery Junc)</span>
+                  <span>5 km (Free Limit)</span>
+                  <span>45 km (Outer Trivandrum)</span>
                 </div>
               </div>
 
-              {/* Calculated Pricing Card */}
+              {/* Dynamic Rate Card */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-300 space-y-3 mt-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-700">Calculated Delivery Fee:</span>
@@ -338,7 +420,7 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                 )}
               </div>
 
-              {/* "Verify Exact Route on Google Maps" Button Explanation & Link */}
+              {/* Google Maps External Verification Button */}
               <div className="pt-2">
                 <a
                   href={googleMapsRouteUrl}
