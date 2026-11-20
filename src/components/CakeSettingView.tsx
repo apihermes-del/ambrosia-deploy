@@ -27,7 +27,7 @@ export const CakeSettingView: React.FC = () => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [viewingRefImage, setViewingRefImage] = useState<{ url: string; title: string } | null>(null);
 
-  const isAuthorized = ['super_admin', 'cake_setting', 'customer_care'].includes(currentUser.role);
+  const isAuthorized = currentUser && ['super_admin', 'cake_setting', 'customer_care'].includes(currentUser.role);
 
   React.useEffect(() => {
     setCurrentTime(Date.now());
@@ -112,7 +112,7 @@ export const CakeSettingView: React.FC = () => {
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
           <h2 className="text-base font-semibold text-[#1D1D1F]">Access Restricted</h2>
           <p className="text-xs text-[#86868B] mt-1.5">
-            Logged in as {currentUser.full_name}. Delivery staff accounts do not have permission to modify Kitchen stages.
+            Logged in as {currentUser?.full_name}. Delivery staff accounts do not have permission to modify Kitchen stages.
           </p>
         </div>
       </div>

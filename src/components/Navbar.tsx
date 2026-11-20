@@ -43,9 +43,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
     { id: 'settings', label: 'Settings', icon: Sliders, allowedRoles: ['super_admin'] },
   ];
 
-  const visibleTabs = allTabs.filter(tab => tab.allowedRoles.includes(currentUser.role));
+  const visibleTabs = allTabs.filter(tab => currentUser && tab.allowedRoles.includes(currentUser.role));
 
   React.useEffect(() => {
+    if (!currentUser) return;
     if (!visibleTabs.some(t => t.id === activeTab)) {
       if (currentUser.role === 'delivery') {
         setActiveTab('delivery');
@@ -55,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
         setActiveTab(visibleTabs[0]?.id || 'desk');
       }
     }
-  }, [currentUser.role, activeTab, visibleTabs, setActiveTab]);
+  }, [currentUser, activeTab, visibleTabs, setActiveTab]);
 
   return (
     <header className="sticky top-0 z-50 glass-nav border-b border-black/[0.06] transition-all">
@@ -96,40 +97,36 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
               </span>
             </button>
 
-            {/* Apple-style Segmented Role Switcher */}
-            <div className="hidden lg:flex items-center bg-[#E8E8ED]/70 p-1 rounded-xl border border-black/[0.04] text-xs">
-              <span className="px-2 font-medium text-[#86868B]">Role:</span>
-              <button 
-                onClick={() => setCurrentUserRole('customer_care')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentUser.role === 'customer_care' ? 'bg-white text-black shadow-xs font-semibold' : 'text-[#6E6E73] hover:text-black'}`}
-              >
-                Desk
-              </button>
-              <button 
-                onClick={() => setCurrentUserRole('cake_setting')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentUser.role === 'cake_setting' ? 'bg-white text-black shadow-xs font-semibold' : 'text-[#6E6E73] hover:text-black'}`}
-              >
-                Kitchen
-              </button>
-              <button 
-                onClick={() => setCurrentUserRole('delivery_lead')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentUser.role === 'delivery_lead' ? 'bg-white text-black shadow-xs font-semibold' : 'text-[#6E6E73] hover:text-black'}`}
-              >
-                Dispatch Lead
-              </button>
-              <button 
-                onClick={() => setCurrentUserRole('delivery')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentUser.role === 'delivery' ? 'bg-white text-black shadow-xs font-semibold' : 'text-[#6E6E73] hover:text-black'}`}
-              >
-                Rider
-              </button>
-              <button 
-                onClick={() => setCurrentUserRole('super_admin')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentUser.role === 'super_admin' ? 'bg-white text-black shadow-xs font-semibold' : 'text-[#6E6E73] hover:text-black'}`}
-              >
-                Admin
-              </button>
-            </div>
+            {/* Super Admin Quick Test Switcher */}
+            {currentUser?.role === 'super_admin' && (
+              <div className="hidden xl:flex items-center bg-[#E8E8ED]/70 p-1 rounded-xl border border-black/[0.04] text-xs">
+                <span className="px-2 font-medium text-[#86868B]">Admin Switch:</span>
+                <button 
+                  onClick={() => setCurrentUserRole('customer_care')}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#6E6E73] hover:text-black hover:bg-white/60 transition-all"
+                >
+                  Desk
+                </button>
+                <button 
+                  onClick={() => setCurrentUserRole('cake_setting')}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#6E6E73] hover:text-black hover:bg-white/60 transition-all"
+                >
+                  Kitchen
+                </button>
+                <button 
+                  onClick={() => setCurrentUserRole('delivery_lead')}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#6E6E73] hover:text-black hover:bg-white/60 transition-all"
+                >
+                  Dispatch
+                </button>
+                <button 
+                  onClick={() => setCurrentUserRole('delivery')}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#6E6E73] hover:text-black hover:bg-white/60 transition-all"
+                >
+                  Rider
+                </button>
+              </div>
+            )}
 
             {/* User Profile Selector (Mobile tap & Desktop click friendly) */}
             <div className="relative">
@@ -139,11 +136,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
                 className="flex items-center gap-1.5 sm:gap-2 bg-[#F5F5F7] hover:bg-[#E8E8ED] border border-black/[0.06] px-2.5 py-1.5 rounded-xl text-xs transition-all text-left"
               >
                 <div className="w-6 h-6 rounded-lg bg-[#0071E3] text-white font-bold flex items-center justify-center text-[11px] shadow-2xs">
-                  {currentUser.full_name[0]}
+                  {currentUser ? currentUser.full_name[0] : 'U'}
                 </div>
                 <div className="hidden sm:block">
-                  <div className="text-xs font-semibold leading-tight text-[#1D1D1F]">{currentUser.full_name}</div>
-                  <div className="text-[10px] text-[#86868B] capitalize">{currentUser.role.replace('_', ' ')}</div>
+                  <div className="text-xs font-semibold leading-tight text-[#1D1D1F]">
+                    {currentUser ? currentUser.full_name : 'Guest'}
+                  </div>
+                  <div className="text-[10px] text-[#86868B] capitalize">
+                    {currentUser ? currentUser.role.replace('_', ' ') : 'Not signed in'}
+                  </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-[#86868B] ml-0.5" />
               </button>
@@ -156,72 +157,38 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
                   />
                   <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-2xl text-gray-800 rounded-2xl shadow-2xl border border-black/[0.08] z-50 py-2">
                     <div className="px-3.5 py-1.5 text-[10px] font-bold text-[#86868B] uppercase tracking-wider border-b border-black/[0.04]">
-                      Switch User Account
-                    </div>
-                    
-                    {/* Role quick switcher on mobile inside dropdown */}
-                    <div className="p-2 border-b border-black/[0.04] grid grid-cols-2 gap-1 text-[11px]">
-                      <button 
-                        onClick={() => { setCurrentUserRole('customer_care'); setIsUserMenuOpen(false); }}
-                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
-                      >
-                        Care Desk
-                      </button>
-                      <button 
-                        onClick={() => { setCurrentUserRole('cake_setting'); setIsUserMenuOpen(false); }}
-                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
-                      >
-                        Kitchen
-                      </button>
-                      <button 
-                        onClick={() => { setCurrentUserRole('delivery_lead'); setIsUserMenuOpen(false); }}
-                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
-                      >
-                        Dispatch Lead
-                      </button>
-                      <button 
-                        onClick={() => { setCurrentUserRole('delivery'); setIsUserMenuOpen(false); }}
-                        className="py-1 px-2 rounded-lg bg-[#F5F5F7] text-left font-medium hover:bg-[#E8E8ED]"
-                      >
-                        Rider
-                      </button>
-                      <button 
-                        onClick={() => { setCurrentUserRole('super_admin'); setIsUserMenuOpen(false); }}
-                        className="col-span-2 py-1 px-2 rounded-lg bg-black text-white text-center font-medium"
-                      >
-                        Super Admin
-                      </button>
+                      Current Employee Session
                     </div>
 
-                    <div className="max-h-56 overflow-y-auto divide-y divide-black/[0.03]">
-                      {users.map(u => (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            setCurrentUser(u);
-                            setIsUserMenuOpen(false);
-                          }}
-                          className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between hover:bg-[#F5F5F7] transition-colors ${u.id === currentUser.id ? 'bg-[#0071E3]/[0.08] font-semibold text-[#0071E3]' : 'text-[#1D1D1F]'}`}
-                        >
-                          <div>
-                            <div>{u.full_name}</div>
-                            <div className="text-[10px] text-[#86868B] capitalize">{u.role.replace('_', ' ')} • {u.phone_number}</div>
-                          </div>
-                          {u.id === currentUser.id && <span className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />}
-                        </button>
-                      ))}
+                    <div className="p-3 border-b border-black/[0.04] bg-[#F5F5F7]/40">
+                      <div className="font-semibold text-xs text-[#1D1D1F]">{currentUser?.full_name}</div>
+                      <div className="text-[10px] text-[#86868B] font-mono mt-0.5">{currentUser?.phone_number}</div>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-black text-white text-[9px] font-semibold rounded-md uppercase tracking-wider">
+                        {currentUser?.role.replace('_', ' ')}
+                      </span>
                     </div>
 
-                    <div className="p-2 border-t border-black/[0.04] bg-[#F5F5F7]/50 rounded-b-xl space-y-1">
+                    <div className="p-2 space-y-1">
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
                           setShowLoginModal(true);
                         }}
-                        className="w-full py-1.5 px-2.5 rounded-lg bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs hover:bg-black/90"
+                        className="w-full py-2 px-3 rounded-xl bg-[#F5F5F7] hover:bg-[#E8E8ED] text-xs font-medium text-left flex items-center gap-2 text-[#1D1D1F]"
                       >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>OTP Phone Sign In</span>
+                        <UserCheck className="w-3.5 h-3.5 text-[#0071E3]" />
+                        <span>Switch Staff / Re-verify OTP</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full py-2 px-3 rounded-xl hover:bg-rose-50 text-xs font-medium text-left flex items-center gap-2 text-rose-600 transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out of Hub</span>
                       </button>
                     </div>
                   </div>
@@ -229,14 +196,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
               )}
             </div>
 
-            {/* Quick OTP Login / Logout Pill */}
+            {/* Logout button */}
             <button
-              onClick={() => setShowLoginModal(true)}
-              className="hidden md:flex items-center gap-1.5 bg-black hover:bg-black/85 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold shadow-2xs transition-all"
-              title="Sign in with verified mobile OTP"
+              onClick={logout}
+              className="flex items-center gap-1.5 bg-[#F5F5F7] hover:bg-rose-50 text-stone-700 hover:text-rose-600 border border-black/[0.06] px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all"
+              title="Sign Out"
             >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>OTP Login</span>
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
 
           </div>

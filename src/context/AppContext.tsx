@@ -20,7 +20,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 interface AppContextType {
   orders: Order[];
   logs: OrderLog[];
-  currentUser: UserProfile;
+  currentUser: UserProfile | null;
   users: UserProfile[];
   addUser: (name: string, phone: string, role: UserProfile['role'], department?: string) => void;
   removeUser: (userId: string) => void;
@@ -37,7 +37,7 @@ interface AppContextType {
   settingsConfig: AdminSettingsConfig;
   updateSettingsConfig: (config: AdminSettingsConfig) => void;
   setCurrentUserRole: (role: UserProfile['role']) => void;
-  setCurrentUser: (user: UserProfile) => void;
+  setCurrentUser: (user: UserProfile | null) => void;
   logout: () => void;
   loginWithPhone: (phone: string, otp: string) => { success: boolean; message?: string };
   addLog: (orderId: string, action: string, details?: string) => void;
@@ -98,14 +98,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return mockUsers;
   });
 
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ambrosia_current_user');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { console.error(e); }
       }
     }
-    return mockUsers[0];
+    return null;
   });
 
   useEffect(() => {
@@ -120,7 +120,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('ambrosia_current_user', JSON.stringify(currentUser));
+    if (currentUser) {
+      localStorage.setItem('ambrosia_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('ambrosia_current_user');
+    }
   }, [currentUser]);
 
   const addUser = (name: string, phone: string, role: UserProfile['role'], department?: string) => {
@@ -174,10 +178,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    addLog('SYSTEM', 'User Logged Out', `${currentUser.full_name}`);
+    if (currentUser) {
+      addLog('SYSTEM', 'User Logged Out', `${currentUser.full_name}`);
+    }
     localStorage.removeItem('ambrosia_current_user');
-    // Set to a placeholder or null logic
-    setCurrentUser(mockUsers[0]);
+    setCurrentUser(null);
   };
   const [kitchens, setKitchens] = useState<Kitchen[]>(() => {
     if (typeof window !== 'undefined') {
@@ -415,8 +420,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       order_id: orderId,
       timestamp: new Date().toISOString(),
-      user_name: currentUser.full_name,
-      user_role: currentUser.role,
+      user_name: currentUser ? currentUser.full_name : 'System/Anonymous',
+      user_role: currentUser ? currentUser.role : 'super_admin',
       action,
       details,
     };
@@ -467,7 +472,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pending_amount: newPending,
         payment_status: newPaymentStatus,
         is_edited_flag: true,
-        edited_summary: editSummary || `Modified by ${currentUser.full_name}`,
+        edited_summary: editSummary || `Modified by ${currentUser?.full_name || 'Staff'}`,
         updated_at: new Date().toISOString(),
       };
     }));
@@ -480,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return {
         ...order,
         status: 'cancelled',
-        special_notes: `CANCELLED: ${reason} (by ${currentUser.full_name})`,
+        special_notes: `CANCELLED: ${reason} (by ${currentUser?.full_name || 'Staff'})`,
         updated_at: new Date().toISOString(),
       };
     }));

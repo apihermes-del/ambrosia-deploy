@@ -182,7 +182,7 @@ export const CustomerCareView: React.FC = () => {
             reference_image_url: referenceImageUrl || undefined,
           })),
         },
-        `Order details modified by ${currentUser.full_name}`
+        `Order details modified by ${currentUser?.full_name || 'Staff'}`
       );
 
       setSuccessBanner(`Order ${tallySONumber} has been updated and flagged for kitchen attention!`);

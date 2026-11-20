@@ -27,7 +27,7 @@ export const DeliveryLeadView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
-  const isAuthorized = ['super_admin', 'delivery_lead', 'customer_care'].includes(currentUser.role);
+  const isAuthorized = currentUser && ['super_admin', 'delivery_lead', 'customer_care'].includes(currentUser.role);
   const deliveryBoys = users.filter(u => u.role === 'delivery');
   
   const onDutyDriverIdsForDate = getOnDutyDriversForDate(selectedDate);

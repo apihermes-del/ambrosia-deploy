@@ -35,7 +35,7 @@ export const AdminSettingsView: React.FC = () => {
     currentUser 
   } = useApp();
 
-  const isSuperAdmin = currentUser.role === 'super_admin';
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   // Form State
   const [freeRadiusInput, setFreeRadiusInput] = useState(settingsConfig.freeRadiusKm);
@@ -504,7 +504,7 @@ export const AdminSettingsView: React.FC = () => {
                   <tr key={u.id} className="hover:bg-indigo-50/20">
                     <td className="py-2.5 px-3 font-semibold text-gray-900">
                       {u.full_name}
-                      {u.id === currentUser.id && (
+                      {u.id === currentUser?.id && (
                         <span className="ml-1.5 text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
                           YOU
                         </span>
@@ -522,7 +522,7 @@ export const AdminSettingsView: React.FC = () => {
                       {u.phone_number}
                     </td>
                     <td className="py-2.5 px-3 text-right">
-                      {u.id !== currentUser.id && users.length > 1 ? (
+                      {u.id !== currentUser?.id && users.length > 1 ? (
                         <button
                           type="button"
                           onClick={() => handleRemoveEmployee(u.id, u.full_name)}

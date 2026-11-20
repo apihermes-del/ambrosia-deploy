@@ -25,8 +25,8 @@ export const DeliveryDriverView: React.FC = () => {
     markDelivered 
   } = useApp();
 
-  const isDeliveryRole = currentUser.role === 'delivery';
-  const [activeDriverId, setActiveDriverId] = useState<string>(isDeliveryRole ? currentUser.id : 'u5');
+  const isDeliveryRole = currentUser?.role === 'delivery';
+  const [activeDriverId, setActiveDriverId] = useState<string>(isDeliveryRole ? currentUser?.id || 'u5' : 'u5');
   
   // Delivery Completion Modal State
   const [deliveredModalOrder, setDeliveredModalOrder] = useState<Order | null>(null);
