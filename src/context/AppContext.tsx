@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   Order, 
   UserProfile, 
@@ -15,6 +15,7 @@ import {
 } from '@/types';
 import { initialOrders, mockUsers, mockKitchens, mockPickupLocations, initialLogs } from '@/lib/mockData';
 import { defaultSettingsConfig } from '@/lib/deliveryPricing';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface AppContextType {
   orders: Order[];
@@ -176,15 +177,132 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('ambrosia_orders_v3', JSON.stringify(orders));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_orders_v3',
+        value: orders,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
   }, [orders]);
 
   useEffect(() => {
     localStorage.setItem('ambrosia_logs_v3', JSON.stringify(logs));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_logs_v3',
+        value: logs,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
   }, [logs]);
 
   useEffect(() => {
     localStorage.setItem('ambrosia_admin_settings', JSON.stringify(settingsConfig));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_admin_settings',
+        value: settingsConfig,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
   }, [settingsConfig]);
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_kitchens', JSON.stringify(kitchens));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_kitchens',
+        value: kitchens,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
+  }, [kitchens]);
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_pickup_locations', JSON.stringify(pickupLocations));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_pickup_locations',
+        value: pickupLocations,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
+  }, [pickupLocations]);
+
+  useEffect(() => {
+    if (Object.keys(dailyRosters).length > 0) {
+      localStorage.setItem('ambrosia_daily_rosters', JSON.stringify(dailyRosters));
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('system_settings').upsert({
+          key: 'ambrosia_daily_rosters',
+          value: dailyRosters,
+          updated_at: new Date().toISOString()
+        }).then();
+      }
+    }
+  }, [dailyRosters]);
+
+  // Initial load from Supabase & Realtime subscription
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const client = supabase;
+
+    // 1. Initial fetch from Supabase
+    client.from('system_settings').select('*').then(({ data, error }) => {
+      if (error || !data) return;
+      data.forEach(item => {
+        if (item.key === 'ambrosia_orders_v3' && Array.isArray(item.value)) {
+          setOrders(item.value);
+        } else if (item.key === 'ambrosia_logs_v3' && Array.isArray(item.value)) {
+          setLogs(item.value);
+        } else if (item.key === 'ambrosia_admin_settings' && item.value) {
+          setSettingsConfig(item.value);
+        } else if (item.key === 'ambrosia_kitchens' && Array.isArray(item.value)) {
+          setKitchens(item.value);
+        } else if (item.key === 'ambrosia_pickup_locations' && Array.isArray(item.value)) {
+          setPickupLocations(item.value);
+        } else if (item.key === 'ambrosia_daily_rosters' && item.value) {
+          setDailyRosters(item.value);
+        }
+      });
+    });
+
+    // 2. Realtime listener across all devices / drivers / kitchens
+    const channel = client
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'system_settings'
+        },
+        payload => {
+          if (payload.new && (payload.new as any).key) {
+            const { key, value } = payload.new as any;
+            if (key === 'ambrosia_orders_v3' && Array.isArray(value)) {
+              setOrders(value);
+            } else if (key === 'ambrosia_logs_v3' && Array.isArray(value)) {
+              setLogs(value);
+            } else if (key === 'ambrosia_admin_settings' && value) {
+              setSettingsConfig(value);
+            } else if (key === 'ambrosia_kitchens' && Array.isArray(value)) {
+              setKitchens(value);
+            } else if (key === 'ambrosia_pickup_locations' && Array.isArray(value)) {
+              setPickupLocations(value);
+            } else if (key === 'ambrosia_daily_rosters' && value) {
+              setDailyRosters(value);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, []);
 
   const updateSettingsConfig = (newConfig: AdminSettingsConfig) => {
     setSettingsConfig(newConfig);
