@@ -322,11 +322,8 @@ export const CakeSettingView: React.FC = () => {
 
                       {/* HIGH CONTRAST CAKE INSCRIPTION / MESSAGE BOX */}
                       {item.cake_message && (
-                        <div className="p-2 rounded-md bg-amber-400 border border-amber-500 text-amber-950 shadow-xs">
-                          <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900">
-                            <span>✍️ Message to Pipe on Cake:</span>
-                          </div>
-                          <div className="text-xs font-serif font-black text-amber-950 mt-0.5 tracking-wide leading-tight">
+                        <div className="py-1.5 px-2.5 rounded-md bg-amber-400 border border-amber-500 text-amber-950 shadow-xs">
+                          <div className="text-xs font-serif font-black text-amber-950 tracking-wide leading-tight">
                             &ldquo;{item.cake_message}&rdquo;
                           </div>
                         </div>
