@@ -4,19 +4,15 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Order, OrderItem } from '@/types';
 import { 
-  Cake, 
   Clock, 
   MapPin, 
   CheckCircle2, 
   AlertCircle, 
-  Camera, 
   ChefHat, 
   RotateCcw,
   AlertTriangle,
-  ArrowRight,
   Play,
   Image as ImageIcon,
-  ExternalLink,
   X
 } from 'lucide-react';
 
@@ -29,8 +25,6 @@ export const CakeSettingView: React.FC = () => {
   } | null>(null);
   const [chosenLocationId, setChosenLocationId] = useState<string>('');
   const [currentTime, setCurrentTime] = useState<number>(0);
-  
-  // Reference Image Lightbox modal
   const [viewingRefImage, setViewingRefImage] = useState<{ url: string; title: string } | null>(null);
 
   const isAuthorized = ['super_admin', 'cake_setting', 'customer_care'].includes(currentUser.role);
@@ -43,12 +37,10 @@ export const CakeSettingView: React.FC = () => {
 
   const now = currentTime ? new Date(currentTime) : new Date(0);
 
-  // Orders that are relevant to kitchen
   const kitchenOrders = orders.filter(o => 
     ['new', 'preparing', 'ready_for_pickup'].includes(o.status)
   );
 
-  // Filter orders within lead time window or already preparing
   const activeLeadOrders = kitchenOrders.filter(order => {
     if (order.status === 'ready_for_pickup') return false;
     const target = new Date(order.target_delivery_time).getTime();
@@ -64,25 +56,16 @@ export const CakeSettingView: React.FC = () => {
     ? kitchenOrders.filter(o => o.status === 'ready_for_pickup')
     : kitchenOrders;
 
-  // BLANKET ACTION: Move entire order from New -> Preparing
   const handleBlanketStartPrep = (order: Order) => {
-    if (!isAuthorized) {
-      alert('Unauthorized: Only Cake Setting and Customer Care can modify kitchen stages.');
-      return;
-    }
-    // Set all items in the order to preparing
+    if (!isAuthorized) return;
     order.items.forEach(itm => {
       updateItemStatus(order.id, itm.id, 'preparing');
     });
     updateOrderStatus(order.id, 'preparing', undefined, 'Entire order moved to Preparing');
   };
 
-  // Move Ready for Pick up back to Preparing
   const handleRevertToPreparing = (order: Order) => {
-    if (!isAuthorized) {
-      alert('Unauthorized: Only Cake Setting and Customer Care can modify kitchen stages.');
-      return;
-    }
+    if (!isAuthorized) return;
     const confirmRevert = confirm(`Move ${order.tally_so_number} back to "Preparing" for adjustments?`);
     if (confirmRevert) {
       order.items.forEach(itm => {
@@ -93,10 +76,7 @@ export const CakeSettingView: React.FC = () => {
   };
 
   const openReadyModal = (order: Order) => {
-    if (!isAuthorized) {
-      alert('Unauthorized: Delivery staff cannot change kitchen readiness.');
-      return;
-    }
+    if (!isAuthorized) return;
     const defaultLoc = order.order_type === 'home_delivery'
       ? pickupLocations.find(l => l.category === 'cake_section')?.id || pickupLocations[0]?.id
       : pickupLocations.find(l => l.category === 'outlet_chiller')?.id || pickupLocations[1]?.id;
@@ -108,12 +88,10 @@ export const CakeSettingView: React.FC = () => {
     });
   };
 
-  // BLANKET ACTION: Move entire order to Ready for Pick up
   const confirmReadyForPickup = () => {
     if (!selectedLocationModal) return;
     const locName = pickupLocations.find(l => l.id === chosenLocationId)?.name || 'Chiller';
     
-    // Mark all items ready as well
     const targetOrder = orders.find(o => o.id === selectedLocationModal.orderId);
     if (targetOrder) {
       targetOrder.items.forEach(itm => {
@@ -129,13 +107,12 @@ export const CakeSettingView: React.FC = () => {
 
   if (!isAuthorized) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <div className="p-8 bg-white rounded-2xl border border-red-200 shadow-sm max-w-md mx-auto">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-gray-900">Access Restricted</h2>
-          <p className="text-xs text-gray-500 mt-2">
-            Logged in as <strong>{currentUser.full_name} ({currentUser.role.replace('_', ' ')})</strong>.
-            Delivery boys do not have permission to modify Cake Setting & Kitchen boards.
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+        <div className="p-8 apple-card max-w-md mx-auto">
+          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
+          <h2 className="text-base font-semibold text-[#1D1D1F]">Access Restricted</h2>
+          <p className="text-xs text-[#86868B] mt-1.5">
+            Logged in as {currentUser.full_name}. Delivery staff accounts do not have permission to modify Kitchen stages.
           </p>
         </div>
       </div>
@@ -143,30 +120,30 @@ export const CakeSettingView: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/60">
+      {/* Apple-style Subheader */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-black/[0.06]">
         <div>
-          <h1 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-2">
-            Cake Setting & Production Board
-            <span className="text-xs bg-amber-600 text-white font-sans font-semibold px-2 py-0.5 rounded-full">
-              Simplified Kitchen Display
+          <h1 className="text-xl font-semibold tracking-tight text-[#1D1D1F] flex items-center gap-2">
+            Cake Setting & Kitchen
+            <span className="text-[11px] bg-black/[0.06] text-[#424245] font-mono px-2 py-0.5 rounded-md font-medium">
+              Queue
             </span>
           </h1>
-          <p className="text-xs text-gray-600 mt-0.5">
-            Single blanket &ldquo;Start Prep&rdquo; and &ldquo;Ready for Pick up&rdquo; buttons per card. Tap reference design photos to view customer models.
+          <p className="text-xs text-[#86868B] mt-0.5">
+            Live orders sorted by lead time. High-contrast inscription boxes highlight exact text to pipe.
           </p>
         </div>
 
-        {/* Tab Filters */}
-        <div className="flex items-center gap-1.5 bg-amber-100/80 p-1 rounded-xl">
+        {/* Minimal Segmented Filters */}
+        <div className="flex items-center bg-[#E8E8ED]/70 p-1 rounded-xl border border-black/[0.04]">
           <button
             onClick={() => setActiveTab('active')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
               activeTab === 'active' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
+                ? 'bg-white text-black shadow-xs font-semibold' 
+                : 'text-[#6E6E73] hover:text-black font-medium'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -174,20 +151,20 @@ export const CakeSettingView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
               activeTab === 'all' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
+                ? 'bg-white text-black shadow-xs font-semibold' 
+                : 'text-[#6E6E73] hover:text-black font-medium'
             }`}
           >
-            All Pending ({kitchenOrders.filter(o => o.status !== 'ready_for_pickup').length})
+            Pending ({kitchenOrders.filter(o => o.status !== 'ready_for_pickup').length})
           </button>
           <button
             onClick={() => setActiveTab('ready')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
               activeTab === 'ready' 
-                ? 'bg-amber-600 text-white shadow-sm' 
-                : 'text-amber-900 hover:bg-amber-200/70'
+                ? 'bg-white text-black shadow-xs font-semibold' 
+                : 'text-[#6E6E73] hover:text-black font-medium'
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -196,14 +173,14 @@ export const CakeSettingView: React.FC = () => {
         </div>
       </div>
 
-      {/* Clean Compact Cards Grid */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Modern Minimalist Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {displayedOrders.length === 0 ? (
-          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-gray-300">
-            <ChefHat className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-            <h3 className="text-sm font-semibold text-gray-700">No Orders Currently in Lead Window</h3>
-            <p className="text-xs text-gray-400 max-w-sm mx-auto mt-0.5">
-              Future orders will automatically light up here once their configured lead time window activates.
+          <div className="col-span-full py-20 text-center apple-card border-dashed">
+            <ChefHat className="w-9 h-9 text-[#86868B] mx-auto mb-2 opacity-50" />
+            <h3 className="text-sm font-semibold text-[#1D1D1F]">No Orders in Queue</h3>
+            <p className="text-xs text-[#86868B] max-w-xs mx-auto mt-0.5">
+              Future bookings will appear here automatically when their lead time opens.
             </p>
           </div>
         ) : (
@@ -213,138 +190,136 @@ export const CakeSettingView: React.FC = () => {
             const isReadyForPickup = order.status === 'ready_for_pickup';
             const isPreparing = order.status === 'preparing';
             const isNew = order.status === 'new';
-
-            // Find any reference image attached to order or items
             const referenceImage = order.reference_image_url || order.items.find(i => i.reference_image_url)?.reference_image_url;
 
             return (
               <div 
                 key={order.id} 
-                className={`bg-white rounded-xl border shadow-xs transition-all flex flex-col justify-between overflow-hidden ${
+                className={`apple-card apple-card-hover flex flex-col justify-between overflow-hidden ${
                   isReadyForPickup
-                    ? 'border-emerald-300 bg-emerald-50/15'
+                    ? 'border-emerald-500/30'
                     : isPreparing
-                    ? 'border-amber-400 ring-1 ring-amber-200 bg-amber-50/10'
+                    ? 'border-[#0071E3]/30'
                     : minutesUntilDelivery <= 60 
-                    ? 'border-rose-400 ring-1 ring-rose-200'
-                    : 'border-amber-200 hover:border-amber-300'
+                    ? 'border-rose-500/40' 
+                    : ''
                 }`}
               >
-                {/* Header */}
-                <div className="p-3 border-b border-gray-100 bg-amber-50/40">
+                {/* Card Top Section */}
+                <div className="p-3.5 border-b border-black/[0.05] bg-[#FBFBFD]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-black text-amber-950 bg-amber-200 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-xs font-semibold text-[#1D1D1F] bg-black/[0.05] px-2 py-0.5 rounded-md">
                         {order.tally_so_number}
                       </span>
                       {order.is_edited_flag && (
-                        <span className="text-[9px] bg-red-100 text-red-700 font-black px-1.5 py-0.5 rounded border border-red-300 animate-pulse flex items-center gap-0.5">
-                          <AlertTriangle className="w-2.5 h-2.5" /> EDITED
+                        <span className="text-[10px] bg-rose-50 text-rose-700 font-semibold px-1.5 py-0.5 rounded border border-rose-200">
+                          EDITED
                         </span>
                       )}
                     </div>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase ${
-                      order.order_type === 'home_delivery' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      order.order_type === 'home_delivery' 
+                        ? 'bg-[#0071E3]/10 text-[#0071E3]' 
+                        : 'bg-purple-500/10 text-purple-700'
                     }`}>
-                      {order.order_type === 'home_delivery' ? '🚚 Delivery' : '🏪 Outlet'}
+                      {order.order_type === 'home_delivery' ? 'Home Delivery' : 'Outlet Pickup'}
                     </span>
                   </div>
 
-                  <div className="flex items-baseline justify-between mt-2">
-                    <span className="text-xs font-bold text-gray-900 truncate max-w-[140px]">
+                  <div className="flex items-baseline justify-between mt-2.5">
+                    <span className="text-xs font-semibold text-[#1D1D1F] truncate max-w-[150px]">
                       {order.customer_name}
                     </span>
-                    <span className={`text-xs font-bold ${
-                      minutesUntilDelivery < 0 ? 'text-red-600 animate-pulse' : minutesUntilDelivery <= 60 ? 'text-rose-600' : 'text-gray-700'
+                    <span className={`text-xs font-mono font-semibold ${
+                      minutesUntilDelivery < 0 ? 'text-rose-600' : minutesUntilDelivery <= 60 ? 'text-amber-600' : 'text-[#6E6E73]'
                     }`}>
                       {order.delivery_time_slot}
                     </span>
                   </div>
 
                   {order.special_notes && (
-                    <div className="mt-1.5 text-[11px] text-amber-900 bg-amber-100/60 p-1.5 rounded border border-amber-300/60 leading-tight">
-                      <strong>Note:</strong> {order.special_notes}
+                    <div className="mt-2 text-[11px] text-[#424245] bg-[#F5F5F7] p-2 rounded-lg border border-black/[0.04] leading-relaxed">
+                      <strong className="text-black">Note:</strong> {order.special_notes}
                     </div>
                   )}
                 </div>
 
-                {/* Body: Clean item summaries (NO line item buttons!) */}
-                <div className="p-3 space-y-2 flex-1">
+                {/* Card Body */}
+                <div className="p-3.5 space-y-2.5 flex-1 bg-white">
                   
-                  {/* Customer Reference Design Image Thumbnail */}
+                  {/* Reference Design Image Badge */}
                   {referenceImage && (
-                    <div className="p-2 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-between gap-2">
+                    <div className="p-2 rounded-xl bg-[#F5F5F7] border border-black/[0.06] flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <div 
                           onClick={() => setViewingRefImage({ url: referenceImage, title: `${order.tally_so_number} Reference Model` })}
-                          className="w-10 h-10 rounded-md overflow-hidden border border-purple-300 bg-purple-100 cursor-pointer flex-shrink-0 relative group"
+                          className="w-9 h-9 rounded-lg overflow-hidden border border-black/[0.08] cursor-pointer flex-shrink-0"
                         >
                           <img 
                             src={referenceImage} 
                             alt="Reference" 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                            className="w-full h-full object-cover" 
                           />
                         </div>
-                        <div className="text-[11px] text-purple-950 leading-tight">
-                          <span className="font-bold block">Customer Design Attached</span>
-                          <span className="text-[10px] text-purple-700">Tap photo to view full cake reference</span>
+                        <div className="text-[11px] leading-tight">
+                          <span className="font-semibold text-[#1D1D1F] block">Design Attached</span>
+                          <span className="text-[10px] text-[#86868B]">Tap to enlarge model</span>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setViewingRefImage({ url: referenceImage, title: `${order.tally_so_number} Reference Model` })}
-                        className="px-2 py-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-700 text-white rounded shadow-2xs"
+                        className="px-2 py-1 text-[10px] font-medium bg-black text-white rounded-md hover:bg-black/80 transition-colors"
                       >
                         View
                       </button>
                     </div>
                   )}
 
-                  {/* Order Items */}
+                  {/* Items */}
                   {order.items.map(item => (
                     <div 
                       key={item.id} 
-                      className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/80 text-xs space-y-2 shadow-2xs"
+                      className="p-2.5 rounded-xl border border-black/[0.06] bg-[#FAFAFC] text-xs space-y-2"
                     >
-                      {/* Product Item Line */}
                       <div className="flex items-start justify-between gap-1">
                         <div>
-                          <span className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block">Item / Product:</span>
-                          <span className="font-extrabold text-slate-900 text-xs leading-snug">
+                          <span className="text-[10px] font-mono text-[#86868B] block">Product</span>
+                          <span className="font-semibold text-[#1D1D1F] text-xs">
                             {item.item_name}
                           </span>
                         </div>
-                        <span className="text-[10px] bg-slate-200/80 text-slate-800 font-bold px-1.5 py-0.5 rounded flex-shrink-0">
+                        <span className="text-[10px] bg-black/[0.04] text-[#424245] font-mono font-medium px-2 py-0.5 rounded-md">
                           {item.size_or_weight} • Qty: {item.quantity}
                         </span>
                       </div>
 
-                      {/* HIGH CONTRAST CAKE INSCRIPTION / MESSAGE BOX */}
+                      {/* HIGH-CONTRAST GOLDEN CAKE INSCRIPTION */}
                       {item.cake_message && (
-                        <div className="py-1.5 px-2.5 rounded-md bg-amber-400 border border-amber-500 text-amber-950 shadow-xs">
-                          <div className="text-xs font-serif font-black text-amber-950 tracking-wide leading-tight">
+                        <div className="py-2 px-2.5 rounded-lg bg-[#FFD60A] border border-[#E5C000] text-[#1D1D1F] shadow-2xs">
+                          <div className="text-xs font-serif font-black tracking-wide leading-tight">
                             &ldquo;{item.cake_message}&rdquo;
                           </div>
                         </div>
                       )}
 
-                      {/* Special Design Instructions */}
                       {item.special_instructions && (
-                        <div className="p-1.5 rounded bg-blue-50 border border-blue-200 text-blue-950 text-[10px] leading-tight">
-                          <span className="font-bold text-blue-800">Design Note:</span> {item.special_instructions}
+                        <div className="text-[10px] text-[#86868B] italic">
+                          Design: {item.special_instructions}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
 
-                {/* SINGLE BLANKET ACTION FOOTER */}
-                <div className="p-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                {/* Minimal Action Footer */}
+                <div className="p-3 border-t border-black/[0.05] bg-[#FBFBFD] flex items-center justify-between">
                   {isNew ? (
                     <button
                       onClick={() => handleBlanketStartPrep(order)}
-                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full py-2 bg-black hover:bg-black/80 text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
                       Start Prep
@@ -352,14 +327,14 @@ export const CakeSettingView: React.FC = () => {
                   ) : isPreparing ? (
                     <button
                       onClick={() => openReadyModal(order)}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full py-2 bg-[#0071E3] hover:bg-[#0077ED] text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       Ready for Pick up
                     </button>
                   ) : (
                     <div className="w-full flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-800 truncate">
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 truncate">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                         <span className="truncate">
                           {pickupLocations.find(l => l.id === order.pickup_location_id)?.name || 'Chiller'}
@@ -368,7 +343,7 @@ export const CakeSettingView: React.FC = () => {
                       
                       <button
                         onClick={() => handleRevertToPreparing(order)}
-                        className="px-2 py-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded border border-amber-300 flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1 text-[10px] font-medium text-[#424245] bg-[#E8E8ED] hover:bg-[#DCDCE2] rounded-lg border border-black/[0.04] flex items-center gap-1 transition-colors"
                         title="Move back to Preparing"
                       >
                         <RotateCcw className="w-2.5 h-2.5" /> Revert
@@ -383,74 +358,71 @@ export const CakeSettingView: React.FC = () => {
         )}
       </div>
 
-      {/* Lightbox Modal for Customer Reference Image */}
+      {/* Lightbox Modal */}
       {viewingRefImage && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-scale-up">
-            <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                <ImageIcon className="w-4 h-4 text-purple-600" />
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-black/[0.08] animate-scale-up">
+            <div className="p-4 border-b border-black/[0.06] flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#1D1D1F]">
                 {viewingRefImage.title}
               </span>
               <button
                 onClick={() => setViewingRefImage(null)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600"
+                className="p-1 rounded-full text-[#86868B] hover:text-black hover:bg-black/[0.04]"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-3 max-h-[75vh] overflow-auto flex items-center justify-center bg-stone-900">
+            <div className="p-3 max-h-[75vh] overflow-auto flex items-center justify-center bg-[#F5F5F7]">
               <img 
                 src={viewingRefImage.url} 
                 alt="Cake Reference" 
-                className="max-h-[70vh] w-auto object-contain rounded-lg shadow-md" 
+                className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-sm" 
               />
             </div>
-            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Customer reference design for setting & decoration</span>
+            <div className="p-3.5 bg-white border-t border-black/[0.06] flex items-center justify-between text-xs text-[#86868B]">
+              <span>Customer reference design</span>
               <button
                 onClick={() => setViewingRefImage(null)}
-                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold text-xs"
+                className="px-3 py-1.5 bg-[#F5F5F7] hover:bg-[#E8E8ED] text-black rounded-lg font-medium text-xs transition-colors"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Location Chiller Modal */}
+      {/* Location Modal */}
       {selectedLocationModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-amber-200">
-            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-amber-600" />
-              Select Chiller Storage Location
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-black/[0.08]">
+            <h3 className="text-sm font-semibold text-[#1D1D1F] flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-[#0071E3]" />
+              Assign Chiller Storage
             </h3>
-            <p className="text-[11px] text-gray-500 mt-1">
-              {selectedLocationModal.orderType === 'home_delivery'
-                ? 'Store in Cake Section Chiller for delivery driver pickup.'
-                : 'Bring down to the outlet and place in one of the outlet chillers.'}
+            <p className="text-xs text-[#86868B] mt-1">
+              Select where this order is being stored.
             </p>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-2">
               {pickupLocations.map(loc => (
                 <label 
                   key={loc.id} 
-                  className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer text-xs ${
+                  className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer text-xs transition-all ${
                     chosenLocationId === loc.id 
-                      ? 'border-amber-600 bg-amber-50 font-bold text-amber-950' 
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                      ? 'border-[#0071E3] bg-[#0071E3]/[0.06] font-semibold text-[#0071E3]' 
+                      : 'border-black/[0.08] hover:bg-[#F5F5F7] text-[#1D1D1F]'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <input
                       type="radio"
                       name="pickupLocation"
                       value={loc.id}
                       checked={chosenLocationId === loc.id}
                       onChange={() => setChosenLocationId(loc.id)}
-                      className="accent-amber-600"
+                      className="accent-[#0071E3]"
                     />
                     <span>{loc.name}</span>
                   </div>
@@ -458,20 +430,20 @@ export const CakeSettingView: React.FC = () => {
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-end gap-2">
+            <div className="mt-6 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedLocationModal(null)}
-                className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="px-3.5 py-1.5 text-xs text-[#86868B] hover:text-black rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmReadyForPickup}
-                className="px-4 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+                className="px-4 py-1.5 text-xs font-semibold bg-[#0071E3] hover:bg-[#0077ED] text-white rounded-xl shadow-xs"
               >
-                Confirm Location
+                Confirm
               </button>
             </div>
           </div>
