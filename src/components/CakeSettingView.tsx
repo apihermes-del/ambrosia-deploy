@@ -305,26 +305,37 @@ export const CakeSettingView: React.FC = () => {
                   {order.items.map(item => (
                     <div 
                       key={item.id} 
-                      className="p-2 rounded-lg border border-gray-200 bg-gray-50/70 text-xs"
+                      className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/80 text-xs space-y-2 shadow-2xs"
                     >
+                      {/* Product Item Line */}
                       <div className="flex items-start justify-between gap-1">
-                        <div className="font-bold text-gray-900 leading-tight">
-                          {item.item_name}
-                          <span className="text-[10px] text-gray-500 font-medium block">
-                            {item.size_or_weight} • Qty: {item.quantity}
+                        <div>
+                          <span className="text-[9px] uppercase font-bold tracking-wider text-slate-500 block">Item / Product:</span>
+                          <span className="font-extrabold text-slate-900 text-xs leading-snug">
+                            {item.item_name}
                           </span>
                         </div>
+                        <span className="text-[10px] bg-slate-200/80 text-slate-800 font-bold px-1.5 py-0.5 rounded flex-shrink-0">
+                          {item.size_or_weight} • Qty: {item.quantity}
+                        </span>
                       </div>
 
+                      {/* HIGH CONTRAST CAKE INSCRIPTION / MESSAGE BOX */}
                       {item.cake_message && (
-                        <div className="mt-1.5 p-1 rounded bg-white border border-amber-200 text-[11px] font-serif text-amber-950 font-semibold italic">
-                          &ldquo;{item.cake_message}&rdquo;
+                        <div className="p-2 rounded-md bg-amber-400 border border-amber-500 text-amber-950 shadow-xs">
+                          <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-900">
+                            <span>✍️ Message to Pipe on Cake:</span>
+                          </div>
+                          <div className="text-xs font-serif font-black text-amber-950 mt-0.5 tracking-wide leading-tight">
+                            &ldquo;{item.cake_message}&rdquo;
+                          </div>
                         </div>
                       )}
 
+                      {/* Special Design Instructions */}
                       {item.special_instructions && (
-                        <div className="mt-1 text-[10px] text-gray-600 italic">
-                          Design: {item.special_instructions}
+                        <div className="p-1.5 rounded bg-blue-50 border border-blue-200 text-blue-950 text-[10px] leading-tight">
+                          <span className="font-bold text-blue-800">Design Note:</span> {item.special_instructions}
                         </div>
                       )}
                     </div>
