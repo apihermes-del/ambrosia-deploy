@@ -13,7 +13,11 @@ import {
   ChefHat, 
   RotateCcw,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Play,
+  Image as ImageIcon,
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 export const CakeSettingView: React.FC = () => {
@@ -25,8 +29,10 @@ export const CakeSettingView: React.FC = () => {
   } | null>(null);
   const [chosenLocationId, setChosenLocationId] = useState<string>('');
   const [currentTime, setCurrentTime] = useState<number>(0);
+  
+  // Reference Image Lightbox modal
+  const [viewingRefImage, setViewingRefImage] = useState<{ url: string; title: string } | null>(null);
 
-  // Role Protection: Delivery boys cannot control kitchen
   const isAuthorized = ['super_admin', 'cake_setting', 'customer_care'].includes(currentUser.role);
 
   React.useEffect(() => {
@@ -37,12 +43,12 @@ export const CakeSettingView: React.FC = () => {
 
   const now = currentTime ? new Date(currentTime) : new Date(0);
 
-  // Orders that are relevant to kitchen (new, preparing, ready_for_pickup)
+  // Orders that are relevant to kitchen
   const kitchenOrders = orders.filter(o => 
     ['new', 'preparing', 'ready_for_pickup'].includes(o.status)
   );
 
-  // Filter orders within lead time window or preparing
+  // Filter orders within lead time window or already preparing
   const activeLeadOrders = kitchenOrders.filter(order => {
     if (order.status === 'ready_for_pickup') return false;
     const target = new Date(order.target_delivery_time).getTime();
@@ -58,30 +64,20 @@ export const CakeSettingView: React.FC = () => {
     ? kitchenOrders.filter(o => o.status === 'ready_for_pickup')
     : kitchenOrders;
 
-  const handleStartPreparing = (orderId: string, item: OrderItem) => {
+  // BLANKET ACTION: Move entire order from New -> Preparing
+  const handleBlanketStartPrep = (order: Order) => {
     if (!isAuthorized) {
       alert('Unauthorized: Only Cake Setting and Customer Care can modify kitchen stages.');
       return;
     }
-    updateItemStatus(orderId, item.id, 'preparing');
-    updateOrderStatus(orderId, 'preparing', undefined, 'Cake setting started preparation');
+    // Set all items in the order to preparing
+    order.items.forEach(itm => {
+      updateItemStatus(order.id, itm.id, 'preparing');
+    });
+    updateOrderStatus(order.id, 'preparing', undefined, 'Entire order moved to Preparing');
   };
 
-  const handleItemReady = (orderId: string, itemId: string) => {
-    if (!isAuthorized) {
-      alert('Unauthorized: Only Cake Setting and Customer Care can modify kitchen stages.');
-      return;
-    }
-    const demoPhotos = [
-      'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=400&q=80',
-    ];
-    const randomPhoto = demoPhotos[Math.floor(Math.random() * demoPhotos.length)];
-    updateItemStatus(orderId, itemId, 'ready', undefined, randomPhoto);
-  };
-
-  // REFINEMENT 6: Move Ready for Pick up back to Preparing
+  // Move Ready for Pick up back to Preparing
   const handleRevertToPreparing = (order: Order) => {
     if (!isAuthorized) {
       alert('Unauthorized: Only Cake Setting and Customer Care can modify kitchen stages.');
@@ -89,11 +85,10 @@ export const CakeSettingView: React.FC = () => {
     }
     const confirmRevert = confirm(`Move ${order.tally_so_number} back to "Preparing" for adjustments?`);
     if (confirmRevert) {
-      // Set all items back to preparing
       order.items.forEach(itm => {
         updateItemStatus(order.id, itm.id, 'preparing');
       });
-      updateOrderStatus(order.id, 'preparing', { pickup_location_id: undefined }, 'Reverted from Ready for Pick up back to Preparing');
+      updateOrderStatus(order.id, 'preparing', { pickup_location_id: undefined }, 'Reverted back to Preparing');
     }
   };
 
@@ -113,9 +108,19 @@ export const CakeSettingView: React.FC = () => {
     });
   };
 
+  // BLANKET ACTION: Move entire order to Ready for Pick up
   const confirmReadyForPickup = () => {
     if (!selectedLocationModal) return;
     const locName = pickupLocations.find(l => l.id === chosenLocationId)?.name || 'Chiller';
+    
+    // Mark all items ready as well
+    const targetOrder = orders.find(o => o.id === selectedLocationModal.orderId);
+    if (targetOrder) {
+      targetOrder.items.forEach(itm => {
+        updateItemStatus(targetOrder.id, itm.id, 'ready');
+      });
+    }
+
     updateOrderStatus(selectedLocationModal.orderId, 'ready_for_pickup', {
       pickup_location_id: chosenLocationId,
     }, `Placed in ${locName}`);
@@ -146,11 +151,11 @@ export const CakeSettingView: React.FC = () => {
           <h1 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-2">
             Cake Setting & Production Board
             <span className="text-xs bg-amber-600 text-white font-sans font-semibold px-2 py-0.5 rounded-full">
-              Compact Kitchen View
+              Simplified Kitchen Display
             </span>
           </h1>
           <p className="text-xs text-gray-600 mt-0.5">
-            Real-time queue sorted by lead time. Streamlined compact cards to monitor high-volume orders simultaneously.
+            Single blanket &ldquo;Start Prep&rdquo; and &ldquo;Ready for Pick up&rdquo; buttons per card. Tap reference design photos to view customer models.
           </p>
         </div>
 
@@ -191,7 +196,7 @@ export const CakeSettingView: React.FC = () => {
         </div>
       </div>
 
-      {/* Compact Cards Grid (Refinement 3: reduced clutter, removed prep kitchen dropdown) */}
+      {/* Clean Compact Cards Grid */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {displayedOrders.length === 0 ? (
           <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-gray-300">
@@ -203,10 +208,14 @@ export const CakeSettingView: React.FC = () => {
           </div>
         ) : (
           displayedOrders.map(order => {
-            const allItemsReady = order.items.every(i => i.status === 'ready');
             const targetTime = new Date(order.target_delivery_time);
             const minutesUntilDelivery = Math.round((targetTime.getTime() - now.getTime()) / 60000);
             const isReadyForPickup = order.status === 'ready_for_pickup';
+            const isPreparing = order.status === 'preparing';
+            const isNew = order.status === 'new';
+
+            // Find any reference image attached to order or items
+            const referenceImage = order.reference_image_url || order.items.find(i => i.reference_image_url)?.reference_image_url;
 
             return (
               <div 
@@ -214,12 +223,14 @@ export const CakeSettingView: React.FC = () => {
                 className={`bg-white rounded-xl border shadow-xs transition-all flex flex-col justify-between overflow-hidden ${
                   isReadyForPickup
                     ? 'border-emerald-300 bg-emerald-50/15'
+                    : isPreparing
+                    ? 'border-amber-400 ring-1 ring-amber-200 bg-amber-50/10'
                     : minutesUntilDelivery <= 60 
                     ? 'border-rose-400 ring-1 ring-rose-200'
                     : 'border-amber-200 hover:border-amber-300'
                 }`}
               >
-                {/* Compact Header */}
+                {/* Header */}
                 <div className="p-3 border-b border-gray-100 bg-amber-50/40">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
@@ -257,18 +268,44 @@ export const CakeSettingView: React.FC = () => {
                   )}
                 </div>
 
-                {/* Compact Items List */}
+                {/* Body: Clean item summaries (NO line item buttons!) */}
                 <div className="p-3 space-y-2 flex-1">
+                  
+                  {/* Customer Reference Design Image Thumbnail */}
+                  {referenceImage && (
+                    <div className="p-2 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          onClick={() => setViewingRefImage({ url: referenceImage, title: `${order.tally_so_number} Reference Model` })}
+                          className="w-10 h-10 rounded-md overflow-hidden border border-purple-300 bg-purple-100 cursor-pointer flex-shrink-0 relative group"
+                        >
+                          <img 
+                            src={referenceImage} 
+                            alt="Reference" 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                          />
+                        </div>
+                        <div className="text-[11px] text-purple-950 leading-tight">
+                          <span className="font-bold block">Customer Design Attached</span>
+                          <span className="text-[10px] text-purple-700">Tap photo to view full cake reference</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewingRefImage({ url: referenceImage, title: `${order.tally_so_number} Reference Model` })}
+                        className="px-2 py-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-700 text-white rounded shadow-2xs"
+                      >
+                        View
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Order Items */}
                   {order.items.map(item => (
                     <div 
                       key={item.id} 
-                      className={`p-2 rounded-lg border text-xs ${
-                        item.status === 'ready' 
-                          ? 'bg-emerald-50/60 border-emerald-300' 
-                          : item.status === 'preparing'
-                          ? 'bg-amber-50/60 border-amber-300'
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
+                      className="p-2 rounded-lg border border-gray-200 bg-gray-50/70 text-xs"
                     >
                       <div className="flex items-start justify-between gap-1">
                         <div className="font-bold text-gray-900 leading-tight">
@@ -277,13 +314,6 @@ export const CakeSettingView: React.FC = () => {
                             {item.size_or_weight} • Qty: {item.quantity}
                           </span>
                         </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase ${
-                          item.status === 'ready' ? 'bg-emerald-600 text-white' :
-                          item.status === 'preparing' ? 'bg-amber-500 text-white' :
-                          'bg-gray-200 text-gray-700'
-                        }`}>
-                          {item.status}
-                        </span>
                       </div>
 
                       {item.cake_message && (
@@ -292,32 +322,34 @@ export const CakeSettingView: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Item Actions */}
-                      <div className="mt-2 flex items-center justify-end gap-1.5">
-                        {item.status === 'pending' && (
-                          <button
-                            onClick={() => handleStartPreparing(order.id, item)}
-                            className="px-2 py-0.5 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded transition-colors"
-                          >
-                            Start Prep
-                          </button>
-                        )}
-                        {item.status === 'preparing' && (
-                          <button
-                            onClick={() => handleItemReady(order.id, item.id)}
-                            className="px-2 py-0.5 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors flex items-center gap-1"
-                          >
-                            <Camera className="w-2.5 h-2.5" /> Mark Ready
-                          </button>
-                        )}
-                      </div>
+                      {item.special_instructions && (
+                        <div className="mt-1 text-[10px] text-gray-600 italic">
+                          Design: {item.special_instructions}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* Card Action Footer */}
-                <div className="p-2.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-                  {isReadyForPickup ? (
+                {/* SINGLE BLANKET ACTION FOOTER */}
+                <div className="p-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+                  {isNew ? (
+                    <button
+                      onClick={() => handleBlanketStartPrep(order)}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      Start Prep
+                    </button>
+                  ) : isPreparing ? (
+                    <button
+                      onClick={() => openReadyModal(order)}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Ready for Pick up
+                    </button>
+                  ) : (
                     <div className="w-full flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-800 truncate">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
@@ -326,26 +358,12 @@ export const CakeSettingView: React.FC = () => {
                         </span>
                       </div>
                       
-                      {/* REFINEMENT 6: Move stage back to preparing */}
                       <button
                         onClick={() => handleRevertToPreparing(order)}
                         className="px-2 py-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded border border-amber-300 flex items-center gap-1 transition-colors"
                         title="Move back to Preparing"
                       >
                         <RotateCcw className="w-2.5 h-2.5" /> Revert
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-full flex items-center justify-between gap-1">
-                      <span className="text-[10px] text-gray-500 font-medium">
-                        {allItemsReady ? '✨ Ready for chiller' : 'In prep'}
-                      </span>
-                      <button
-                        onClick={() => openReadyModal(order)}
-                        className="px-3 py-1 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all flex items-center gap-1 shadow-xs"
-                      >
-                        Ready for Pick up
-                        <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
                   )}
@@ -356,6 +374,42 @@ export const CakeSettingView: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Lightbox Modal for Customer Reference Image */}
+      {viewingRefImage && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-scale-up">
+            <div className="p-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-purple-600" />
+                {viewingRefImage.title}
+              </span>
+              <button
+                onClick={() => setViewingRefImage(null)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-3 max-h-[75vh] overflow-auto flex items-center justify-center bg-stone-900">
+              <img 
+                src={viewingRefImage.url} 
+                alt="Cake Reference" 
+                className="max-h-[70vh] w-auto object-contain rounded-lg shadow-md" 
+              />
+            </div>
+            <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+              <span>Customer reference design for setting & decoration</span>
+              <button
+                onClick={() => setViewingRefImage(null)}
+                className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded font-semibold text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Location Chiller Modal */}
       {selectedLocationModal && (

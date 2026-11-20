@@ -13,10 +13,11 @@ import {
   CheckCircle, 
   FileText, 
   Edit3, 
-  XCircle, 
   AlertTriangle,
   Search,
-  Calculator
+  Image as ImageIcon,
+  Upload,
+  X
 } from 'lucide-react';
 import { calculateDeliveryFee } from '@/lib/deliveryPricing';
 
@@ -25,10 +26,7 @@ export const CustomerCareView: React.FC = () => {
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'new_booking' | 'manage_orders'>('new_booking');
 
-  // Order Search for management
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Editing state
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   // Form State
@@ -44,13 +42,16 @@ export const CustomerCareView: React.FC = () => {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTimeSlot, setDeliveryTimeSlot] = useState('14:00 - 16:00');
   const [specialNotes, setSpecialNotes] = useState('');
+  
+  // Reference Image URL / File input
+  const [referenceImageUrl, setReferenceImageUrl] = useState<string>('');
 
   // Financials & Payment Status
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [advancePaid, setAdvancePaid] = useState<number>(0);
   const [paymentStatusType, setPaymentStatusType] = useState<PaymentStatus>('partial');
 
-  // Items List (Eggless option removed as per refinement 1)
+  // Items List
   const [items, setItems] = useState<Omit<OrderItem, 'id' | 'order_id' | 'status'>[]>([
     {
       item_name: '',
@@ -91,8 +92,16 @@ export const CustomerCareView: React.FC = () => {
     setItems(prev => prev.map((itm, idx) => idx === index ? { ...itm, [field]: val } : itm));
   };
 
-  const handleDistanceChange = (km: number) => {
-    setDeliveryDistanceKm(km);
+  // Handle local image file upload & convert to Data URL for instant preview & storage
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReferenceImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -115,7 +124,6 @@ export const CustomerCareView: React.FC = () => {
     const deliveryFee = orderType === 'home_delivery' ? calculateDeliveryFee(deliveryDistanceKm, settingsConfig) : 0;
 
     if (editingOrder) {
-      // Modifying existing order
       updateOrder(
         editingOrder.id,
         {
@@ -136,11 +144,13 @@ export const CustomerCareView: React.FC = () => {
           advance_paid: advancePaid,
           payment_status: paymentStatusType,
           special_notes: specialNotes.trim() || undefined,
+          reference_image_url: referenceImageUrl || undefined,
           items: items.map((itm, idx) => ({
             ...itm,
             id: editingOrder.items[idx]?.id || `itm-${Date.now()}-${idx}`,
             order_id: editingOrder.id,
             status: editingOrder.items[idx]?.status || 'pending',
+            reference_image_url: referenceImageUrl || undefined,
           })),
         },
         `Order details modified by ${currentUser.full_name}`
@@ -150,7 +160,6 @@ export const CustomerCareView: React.FC = () => {
       setEditingOrder(null);
       setActiveTab('manage_orders');
     } else {
-      // Creating fresh order
       createOrder({
         tally_so_number: tallySONumber.trim(),
         order_type: orderType,
@@ -171,11 +180,13 @@ export const CustomerCareView: React.FC = () => {
         advance_paid: advancePaid,
         payment_status: paymentStatusType,
         special_notes: specialNotes.trim() || undefined,
+        reference_image_url: referenceImageUrl || undefined,
         items: items.map(itm => ({
           ...itm,
           id: '',
           order_id: '',
           status: 'pending',
+          reference_image_url: referenceImageUrl || undefined,
         }))
       });
 
@@ -194,6 +205,7 @@ export const CustomerCareView: React.FC = () => {
     setDeliveryLandmark('');
     setDeliveryDistanceKm(0);
     setSpecialNotes('');
+    setReferenceImageUrl('');
     setTotalAmount(0);
     setAdvancePaid(0);
     setPaymentStatusType('partial');
@@ -227,6 +239,7 @@ export const CustomerCareView: React.FC = () => {
     setAdvancePaid(order.advance_paid);
     setPaymentStatusType(order.payment_status);
     setSpecialNotes(order.special_notes || '');
+    setReferenceImageUrl(order.reference_image_url || '');
     setItems(order.items.map(i => ({ ...i })));
     setActiveTab('new_booking');
   };
@@ -262,11 +275,11 @@ export const CustomerCareView: React.FC = () => {
             </span>
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Book advanced Tally orders, handle credit customers, edit active orders, or manage cancellations.
+            Book advanced Tally orders, attach design reference photos, handle credit customers, or edit bookings.
           </p>
         </div>
 
-        {/* Tab switch: New Booking vs Manage Existing */}
+        {/* Tab switch */}
         <div className="flex items-center gap-2 bg-amber-100/80 p-1 rounded-xl">
           <button
             onClick={() => {
@@ -470,12 +483,11 @@ export const CustomerCareView: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Kawdiar, Sreekaryam, Pattom"
+                    placeholder="e.g. Kawdiar, Paruthipara, Menamkulam..."
                     value={deliveryArea}
                     onChange={e => setDeliveryArea(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                   />
-                  <span className="text-[10px] text-amber-700">Visible on dispatch board for routing</span>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -495,12 +507,12 @@ export const CustomerCareView: React.FC = () => {
             )}
           </div>
 
-          {/* Step 3: Multi-Item Booking with Lead Times (Eggless removed) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+          {/* Step 3: Multi-Item Booking & Customer Reference Image */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600" />
-                3. Ordered Items & Kitchen Lead Times
+                3. Ordered Items & Design Reference
               </h2>
               <button
                 type="button"
@@ -512,6 +524,68 @@ export const CustomerCareView: React.FC = () => {
               </button>
             </div>
 
+            {/* CUSTOMER CAKE REFERENCE IMAGE UPLOAD BOX */}
+            <div className="p-4 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-950">
+                  <ImageIcon className="w-4 h-4 text-purple-600" />
+                  <span>Customer Reference Design / Cake Model Image (Optional)</span>
+                </div>
+                {referenceImageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImageUrl('')}
+                    className="text-[11px] text-red-600 hover:text-red-800 font-semibold flex items-center gap-0.5"
+                  >
+                    <X className="w-3 h-3" /> Remove Photo
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[11px] text-gray-500">
+                Attach a customer inspiration photo or decoration reference so the Cake Setting & Kitchen chefs can model the cake accurately.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <label className="cursor-pointer px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload Photo from Phone / PC
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                <div className="text-xs text-gray-400 font-medium">or paste image URL:</div>
+
+                <input
+                  type="url"
+                  placeholder="https://... (image link)"
+                  value={referenceImageUrl}
+                  onChange={e => setReferenceImageUrl(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white"
+                />
+              </div>
+
+              {/* Preview Thumbnail */}
+              {referenceImageUrl && (
+                <div className="pt-2 flex items-center gap-3">
+                  <img 
+                    src={referenceImageUrl} 
+                    alt="Design Preview" 
+                    className="w-16 h-16 object-cover rounded-lg border-2 border-purple-400 shadow-xs" 
+                  />
+                  <div className="text-xs text-purple-950">
+                    <span className="font-bold block">✓ Reference Image Attached</span>
+                    <span className="text-[11px] text-gray-500">Chefs will see this directly on the kitchen tablet</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Items Grid */}
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div 
@@ -587,7 +661,6 @@ export const CustomerCareView: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Message on Cake */}
                   <div className="sm:col-span-2 lg:col-span-4">
                     <label className="block text-[11px] font-semibold text-gray-700 mb-1">
                       Cake Inscription / Message
@@ -603,11 +676,11 @@ export const CustomerCareView: React.FC = () => {
 
                   <div className="sm:col-span-2 lg:col-span-2">
                     <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                      Special Design / Eggless Note (if rare)
+                      Design Notes
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Rare eggless request, blue drip"
+                      placeholder="e.g. Model exactly as reference photo"
                       value={item.special_instructions || ''}
                       onChange={e => updateItem(index, 'special_instructions', e.target.value)}
                       className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white"
@@ -619,7 +692,7 @@ export const CustomerCareView: React.FC = () => {
             </div>
           </div>
 
-          {/* Step 4: Payment Status with "Credit Order" option */}
+          {/* Step 4: Payment Status with "Credit Order" */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 p-6">
             <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3 mb-4">
               <IndianRupee className="w-4 h-4 text-amber-600" />
@@ -641,7 +714,6 @@ export const CustomerCareView: React.FC = () => {
                   <option value="pending_cod">Full COD on Delivery</option>
                   <option value="credit">🏢 Credit Order (No cash collected)</option>
                 </select>
-                <span className="text-[10px] text-gray-500">Credit orders skip cash collection on delivery</span>
               </div>
 
               <div>
@@ -683,9 +755,6 @@ export const CustomerCareView: React.FC = () => {
                 </span>
                 <span className="text-xl font-black block mt-0.5">
                   {paymentStatusType === 'credit' ? '₹0.00 (Account Billed)' : `₹${Math.max(0, totalAmount - advancePaid)}`}
-                </span>
-                <span className="text-[10px] text-gray-500">
-                  {paymentStatusType === 'credit' ? 'Invoice directly to corporate/VIP credit' : 'Collect on handover'}
                 </span>
               </div>
             </div>
@@ -734,9 +803,6 @@ export const CustomerCareView: React.FC = () => {
                 className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg bg-white outline-none"
               />
             </div>
-            <span className="text-xs text-gray-500 font-medium">
-              Orders can be edited or cancelled by Customer Care until marked &ldquo;Ready for Pick up&rdquo;.
-            </span>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -747,7 +813,7 @@ export const CustomerCareView: React.FC = () => {
                     <th className="py-3 px-4">Tally SO #</th>
                     <th className="py-3 px-4">Date & Slot</th>
                     <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Items</th>
+                    <th className="py-3 px-4">Items & Design</th>
                     <th className="py-3 px-4">Stage</th>
                     <th className="py-3 px-4">Payment</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -756,6 +822,7 @@ export const CustomerCareView: React.FC = () => {
                 <tbody className="divide-y divide-gray-100">
                   {filteredOrders.map(order => {
                     const canEdit = !['ready_for_pickup', 'out_for_delivery', 'delivered', 'collected', 'cancelled'].includes(order.status);
+                    const hasRef = Boolean(order.reference_image_url || order.items.some(i => i.reference_image_url));
 
                     return (
                       <tr key={order.id} className="hover:bg-amber-50/20">
@@ -779,6 +846,11 @@ export const CustomerCareView: React.FC = () => {
                           <div className="text-gray-700">
                             {order.items.map(i => i.item_name).join(', ')}
                           </div>
+                          {hasRef && (
+                            <span className="inline-block mt-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                              📷 Design Attached
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${

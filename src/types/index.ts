@@ -55,10 +55,11 @@ export interface OrderItem {
   quantity: number;
   cake_message?: string;
   special_instructions?: string;
+  reference_image_url?: string; // Customer reference image for decoration design
   lead_time_minutes: number;
   kitchen_id?: string;
   status: ItemStatus;
-  photo_url?: string;
+  photo_url?: string; // Finished item photo
   ready_at?: string;
 }
 
@@ -73,7 +74,6 @@ export interface OrderLog {
 }
 
 export interface AdminSettingsConfig {
-  // Pricing
   freeRadiusKm: number;
   firstExtraKmCharge: number;
   perExtraKmCharge: number;
@@ -82,13 +82,11 @@ export interface AdminSettingsConfig {
     lat: number;
     lng: number;
   };
-  // Slot configurations
-  openingTime: string; // e.g. "09:00"
-  closingTime: string; // e.g. "21:00"
-  slotDurationHours: number; // e.g. 1 or 2
-  // Staff capacity
-  totalDeliveryEmployees: number; // e.g. 4
-  maxDeliveriesPerDriverPerSlot: number; // e.g. 2 -> slot capacity = drivers * max
+  openingTime: string;
+  closingTime: string;
+  slotDurationHours: number;
+  totalDeliveryEmployees: number;
+  maxDeliveriesPerDriverPerSlot: number;
 }
 
 export interface Order {
@@ -111,7 +109,6 @@ export interface Order {
   target_delivery_time: string;
   status: OrderStatus;
   
-  // Assignment details
   assignment_type: AssignmentType;
   assigned_delivery_user_id?: string;
   third_party_reference?: string;
@@ -124,6 +121,7 @@ export interface Order {
   delivery_payment_collected?: number;
   delivery_payment_mode?: PaymentMode;
   special_notes?: string;
+  reference_image_url?: string; // Order-level reference photo
   
   is_edited_flag?: boolean;
   edited_summary?: string;
