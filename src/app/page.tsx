@@ -56,7 +56,7 @@ function MainAppContent() {
           <div className="p-4 rounded-2xl bg-[#F5F5F7] border border-black/[0.04] text-left text-xs space-y-2">
             <div className="flex items-center gap-2 font-semibold text-[#1D1D1F]">
               <Lock className="w-4 h-4 text-[#0071E3]" />
-              <span>Registered Mobile Number & OTP Verification</span>
+              <span>Registered Mobile Number & Secret PIN</span>
             </div>
             <p className="text-[11px] text-[#86868B]">
               Only employees registered in the roster by Super Admin can sign in.
@@ -67,7 +67,7 @@ function MainAppContent() {
             onClick={() => setShowLoginModal(true)}
             className="w-full py-3.5 bg-black hover:bg-black/90 active:scale-[0.98] text-white font-semibold text-sm rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2"
           >
-            <span>Employee OTP Login</span>
+            <span>Employee Sign In</span>
             <ArrowRight className="w-4 h-4" />
           </button>
 

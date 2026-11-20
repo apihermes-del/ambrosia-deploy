@@ -29,6 +29,7 @@ export interface UserProfile {
   phone_number: string;
   role: UserRole;
   department?: string;
+  pin?: string; // 4-digit secret PIN or Admin password
   is_active: boolean;
   avatar_url?: string;
 }

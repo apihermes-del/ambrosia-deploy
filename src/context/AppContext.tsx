@@ -23,7 +23,8 @@ interface AppContextType {
   currentUser: UserProfile | null;
   authInitialized: boolean;
   users: UserProfile[];
-  addUser: (name: string, phone: string, role: UserProfile['role'], department?: string) => void;
+  addUser: (name: string, phone: string, role: UserProfile['role'], department?: string, pin?: string) => void;
+  updateUserPin: (userId: string, newPin: string) => void;
   removeUser: (userId: string) => void;
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
@@ -40,7 +41,7 @@ interface AppContextType {
   setCurrentUserRole: (role: UserProfile['role']) => void;
   setCurrentUser: (user: UserProfile | null) => void;
   logout: () => void;
-  loginWithPhone: (phone: string, otp: string) => { success: boolean; message?: string };
+  loginWithPin: (phone: string, pin: string) => { success: boolean; message?: string };
   addLog: (orderId: string, action: string, details?: string) => void;
   createOrder: (order: Omit<Order, 'id' | 'created_at' | 'updated_at' | 'pending_amount'>) => void;
   updateOrder: (orderId: string, updatedFields: Partial<Order>, editSummary?: string) => void;
@@ -137,18 +138,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentUser]);
 
-  const addUser = (name: string, phone: string, role: UserProfile['role'], department?: string) => {
+  const addUser = (name: string, phone: string, role: UserProfile['role'], department?: string, pin?: string) => {
     const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`;
+    const defaultPin = pin?.trim() || (role === 'super_admin' ? 'ambrosia2026' : '1234');
     const newUser: UserProfile = {
       id: `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       full_name: name.trim(),
       phone_number: formattedPhone,
       role,
       department: department?.trim() || role.replace('_', ' '),
+      pin: defaultPin,
       is_active: true,
     };
     setUsers(prev => [...prev, newUser]);
     addLog('SYSTEM', 'Employee Added to System', `${newUser.full_name} (${role.replace('_', ' ')} - ${newUser.phone_number})`);
+  };
+
+  const updateUserPin = (userId: string, newPin: string) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        return { ...u, pin: newPin.trim() };
+      }
+      return u;
+    }));
+    const target = users.find(u => u.id === userId);
+    addLog('SYSTEM', 'Employee PIN / Password Reset', `Updated security credentials for ${target?.full_name}`);
   };
 
   const removeUser = (userId: string) => {
@@ -158,7 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addLog('SYSTEM', 'Employee Removed from System', `${toRemove.full_name} (${toRemove.phone_number})`);
   };
 
-  const loginWithPhone = (phone: string, otp: string): { success: boolean; message?: string } => {
+  const loginWithPin = (phone: string, pin: string): { success: boolean; message?: string } => {
     // Normalise phone comparison (strip spaces, dashes, +91)
     const cleanInput = phone.replace(/[^0-9]/g, '').slice(-10);
     const found = users.find(u => u.phone_number.replace(/[^0-9]/g, '').slice(-10) === cleanInput);
@@ -166,7 +180,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!found) {
       return { 
         success: false, 
-        message: 'Phone number not registered. Please contact the Ambrosia Admin to be added to the team.' 
+        message: 'Phone number not registered. Please contact the Ambrosia Admin to be registered in the team roster.' 
       };
     }
 
@@ -177,13 +191,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    // OTP validation (accepts 1234 or any 4/6-digit verification code for seamless ops)
-    if (!otp || otp.length < 4) {
-      return { success: false, message: 'Please enter a valid OTP code.' };
+    // Expected PIN check (fallback default if unset)
+    const expectedPin = found.pin || (found.role === 'super_admin' ? 'ambrosia2026' : '1234');
+    
+    // Allow master Super Admin override password ("ambrosia2026" or "owner2026")
+    const isMasterPassword = pin === 'ambrosia2026' || pin === 'owner2026';
+    
+    if (pin.trim() !== expectedPin && !isMasterPassword) {
+      return { 
+        success: false, 
+        message: 'Incorrect PIN / Password. Please check with Admin or reset it.' 
+      };
     }
 
     setCurrentUser(found);
-    addLog('SYSTEM', 'User Logged In', `${found.full_name} via OTP verification (${found.phone_number})`);
+    addLog('SYSTEM', 'User Logged In', `${found.full_name} authenticated with PIN (${found.phone_number})`);
     return { success: true };
   };
 
@@ -687,9 +709,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       authInitialized,
       users,
       addUser,
+      updateUserPin,
       removeUser,
       logout,
-      loginWithPhone,
+      loginWithPin,
       kitchens,
       pickupLocations,
       setKitchens,

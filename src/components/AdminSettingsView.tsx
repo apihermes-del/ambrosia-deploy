@@ -31,6 +31,7 @@ export const AdminSettingsView: React.FC = () => {
     removeKitchen,
     users,
     addUser,
+    updateUserPin,
     removeUser,
     currentUser 
   } = useApp();
@@ -53,6 +54,11 @@ export const AdminSettingsView: React.FC = () => {
   const [newEmployeePhone, setNewEmployeePhone] = useState('');
   const [newEmployeeRole, setNewEmployeeRole] = useState<UserProfile['role']>('customer_care');
   const [newEmployeeDepartment, setNewEmployeeDepartment] = useState('');
+  const [newEmployeePin, setNewEmployeePin] = useState('1234');
+
+  // Editing PIN modal/prompt state
+  const [editingPinUserId, setEditingPinUserId] = useState<string | null>(null);
+  const [editingPinValue, setEditingPinValue] = useState('');
 
   // New location inputs
   const [newLocationName, setNewLocationName] = useState('');
@@ -102,10 +108,21 @@ export const AdminSettingsView: React.FC = () => {
       alert('Please enter employee name and phone number');
       return;
     }
-    addUser(newEmployeeName, newEmployeePhone, newEmployeeRole, newEmployeeDepartment);
+    addUser(newEmployeeName, newEmployeePhone, newEmployeeRole, newEmployeeDepartment, newEmployeePin);
     setNewEmployeeName('');
     setNewEmployeePhone('');
     setNewEmployeeDepartment('');
+    setNewEmployeePin('1234');
+  };
+
+  const handleSavePin = (userId: string) => {
+    if (!editingPinValue.trim()) {
+      alert('Please enter a valid PIN or password');
+      return;
+    }
+    updateUserPin(userId, editingPinValue.trim());
+    setEditingPinUserId(null);
+    setEditingPinValue('');
   };
 
   const handleRemoveEmployee = (id: string, name: string) => {
@@ -495,7 +512,8 @@ export const AdminSettingsView: React.FC = () => {
                 <tr>
                   <th className="py-2.5 px-3">Name</th>
                   <th className="py-2.5 px-3">Department / Role</th>
-                  <th className="py-2.5 px-3">Login Phone (OTP)</th>
+                  <th className="py-2.5 px-3">Login Phone</th>
+                  <th className="py-2.5 px-3">Secret PIN / Password</th>
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -520,6 +538,50 @@ export const AdminSettingsView: React.FC = () => {
                     </td>
                     <td className="py-2.5 px-3 font-mono font-medium text-gray-700">
                       {u.phone_number}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      {editingPinUserId === u.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="New PIN/Pass"
+                            value={editingPinValue}
+                            onChange={e => setEditingPinValue(e.target.value)}
+                            className="w-24 px-2 py-1 text-xs border border-indigo-400 rounded-md font-mono"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSavePin(u.id)}
+                            className="px-2 py-1 bg-indigo-600 text-white rounded-md text-[10px] font-bold"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingPinUserId(null)}
+                            className="px-1.5 py-1 text-gray-400 hover:text-gray-600 text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono bg-gray-100 text-gray-800 px-2 py-0.5 rounded text-[11px] font-bold">
+                            {u.pin || (u.role === 'super_admin' ? 'ambrosia2026' : '1234')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPinUserId(u.id);
+                              setEditingPinValue(u.pin || (u.role === 'super_admin' ? 'ambrosia2026' : '1234'));
+                            }}
+                            className="text-[10px] text-indigo-600 hover:underline font-semibold"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       {u.id !== currentUser?.id && users.length > 1 ? (
@@ -549,7 +611,7 @@ export const AdminSettingsView: React.FC = () => {
               Add New Employee / Team Member:
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-gray-700 mb-1">
                   Full Name <span className="text-red-500">*</span>
@@ -577,7 +639,7 @@ export const AdminSettingsView: React.FC = () => {
                   <option value="delivery_lead">Delivery Assignment Lead</option>
                   <option value="delivery">Delivery Rider</option>
                   <option value="outlet">Outlet Counter Handover</option>
-                  <option value="super_admin">Super Admin</option>
+                  <option value="super_admin">Super Admin (Full Access)</option>
                 </select>
               </div>
 
@@ -587,7 +649,7 @@ export const AdminSettingsView: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Morning Shift Kitchen"
+                  placeholder="e.g. Morning Shift"
                   value={newEmployeeDepartment}
                   onChange={e => setNewEmployeeDepartment(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
@@ -596,13 +658,26 @@ export const AdminSettingsView: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                  Mobile Number (OTP Login) <span className="text-red-500">*</span>
+                  Mobile Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   placeholder="e.g. 9847012349"
                   value={newEmployeePhone}
                   onChange={e => setNewEmployeePhone(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                  Secret PIN / Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Default: 1234"
+                  value={newEmployeePin}
+                  onChange={e => setNewEmployeePin(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-mono"
                 />
               </div>
