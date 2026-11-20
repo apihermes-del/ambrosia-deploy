@@ -201,10 +201,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    // Expected PIN check (fallback default if unset)
-    const expectedPin = found.pin || (found.role === 'super_admin' ? 'ambrosia2026' : '1234');
+    // Check credentials:
+    // 1. Current active PIN / Password (e.g. customized third password or latest set PIN)
+    // 2. Fixed Master Emergency Fallback:
+    //    - For super_admin: always accepts "ambrosia2026" as an emergency fallback
+    //    - For regular staff: if never set or admin resets it, "1234" is the initial fallback
+    const trimmedInputPin = pin.trim();
+    const activePin = found.pin || (found.role === 'super_admin' ? 'ambrosia2026' : '1234');
+    const isMasterFallback = found.role === 'super_admin' && trimmedInputPin === 'ambrosia2026';
+
+    const isValid = trimmedInputPin === activePin || isMasterFallback;
     
-    if (pin.trim() !== expectedPin) {
+    if (!isValid) {
       return { 
         success: false, 
         message: 'Incorrect PIN / Password. Please check with Admin or reset it.' 
