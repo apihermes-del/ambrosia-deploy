@@ -11,11 +11,25 @@ import {
   IndianRupee, 
   ShieldCheck, 
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  ChefHat,
+  Store,
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 export const AdminSettingsView: React.FC = () => {
-  const { settingsConfig, updateSettingsConfig, currentUser } = useApp();
+  const { 
+    settingsConfig, 
+    updateSettingsConfig, 
+    kitchens, 
+    pickupLocations, 
+    addPickupLocation, 
+    removePickupLocation, 
+    addKitchen, 
+    removeKitchen, 
+    currentUser 
+  } = useApp();
 
   const isSuperAdmin = currentUser.role === 'super_admin';
 
@@ -28,6 +42,13 @@ export const AdminSettingsView: React.FC = () => {
   const [slotDurationInput, setSlotDurationInput] = useState(settingsConfig.slotDurationHours);
   const [totalDriversInput, setTotalDriversInput] = useState(settingsConfig.totalDeliveryEmployees);
   const [maxDeliveriesPerDriver, setMaxDeliveriesPerDriver] = useState(settingsConfig.maxDeliveriesPerDriverPerSlot || 1);
+
+  // New location inputs
+  const [newLocationName, setNewLocationName] = useState('');
+  const [newLocationCategory, setNewLocationCategory] = useState<'outlet_chiller' | 'cake_section' | 'outlet_counter'>('outlet_chiller');
+
+  // New kitchen input
+  const [newKitchenName, setNewKitchenName] = useState('');
 
   const [savedBanner, setSavedBanner] = useState(false);
 
@@ -47,6 +68,20 @@ export const AdminSettingsView: React.FC = () => {
 
     setSavedBanner(true);
     setTimeout(() => setSavedBanner(false), 4000);
+  };
+
+  const handleCreateLocation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLocationName.trim()) return;
+    addPickupLocation(newLocationName.trim(), newLocationCategory);
+    setNewLocationName('');
+  };
+
+  const handleCreateKitchen = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKitchenName.trim()) return;
+    addKitchen(newKitchenName.trim());
+    setNewKitchenName('');
   };
 
   if (!isSuperAdmin) {
@@ -253,6 +288,138 @@ export const AdminSettingsView: React.FC = () => {
                 required
               />
               <span className="text-[10px] text-gray-500">Added for every additional km beyond</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Chillers & Pick Up Locations Management */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Store className="w-5 h-5 text-purple-600" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">4. Chiller & Pick Up Locations Configuration</h2>
+                <p className="text-[11px] text-gray-500">Configure outlet chillers, cake section dispatch, and counter pick up locations</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 bg-purple-100 text-purple-900 rounded-lg">
+              {pickupLocations.length} Configured Locations
+            </span>
+          </div>
+
+          {/* Existing Locations List */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {pickupLocations.map(loc => (
+              <div 
+                key={loc.id} 
+                className="p-3 rounded-xl border border-purple-200 bg-purple-50/40 flex items-center justify-between text-xs"
+              >
+                <div>
+                  <span className="font-bold text-gray-900 block">{loc.name}</span>
+                  <span className="text-[10px] text-purple-700 capitalize font-medium">
+                    Type: {loc.category.replace('_', ' ')}
+                  </span>
+                </div>
+                {pickupLocations.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePickupLocation(loc.id)}
+                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Remove Location"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add New Location Form */}
+          <div className="pt-3 border-t border-gray-100">
+            <h3 className="text-xs font-bold text-gray-700 mb-2">+ Add New Chiller / Pick Up Location:</h3>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Outlet Chiller 3, Cake Section Dispatch Chiller 2..."
+                value={newLocationName}
+                onChange={e => setNewLocationName(e.target.value)}
+                className="flex-1 w-full px-3 py-2 text-xs border border-gray-300 rounded-lg"
+              />
+              <select
+                value={newLocationCategory}
+                onChange={e => setNewLocationCategory(e.target.value as any)}
+                className="w-full sm:w-auto px-3 py-2 text-xs border border-gray-300 rounded-lg font-medium bg-white"
+              >
+                <option value="outlet_chiller">🏪 Outlet Chiller (Counter Pickup)</option>
+                <option value="cake_section">🚚 Cake Section (Driver Dispatch)</option>
+                <option value="outlet_counter">🧁 Counter Display</option>
+              </select>
+              <button
+                type="button"
+                onClick={handleCreateLocation}
+                className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1 shadow-2xs whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Location
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 5: Kitchens & Cake Production Units */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <ChefHat className="w-5 h-5 text-amber-600" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">5. Kitchens & Production Units</h2>
+                <p className="text-[11px] text-gray-500">Configure distinct kitchen units (e.g. Sponge, Icing, Fondant, Desserts)</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg">
+              {kitchens.length} Kitchens
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {kitchens.map(k => (
+              <div 
+                key={k.id} 
+                className="p-3 rounded-xl border border-amber-200 bg-amber-50/40 flex items-center justify-between text-xs"
+              >
+                <span className="font-bold text-gray-900">{k.name}</span>
+                {kitchens.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeKitchen(k.id)}
+                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Remove Kitchen"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-3 border-t border-gray-100">
+            <h3 className="text-xs font-bold text-gray-700 mb-2">+ Add New Kitchen Unit:</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Kitchen 4 - Custom Wedding & Tier Studio..."
+                value={newKitchenName}
+                onChange={e => setNewKitchenName(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={handleCreateKitchen}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Kitchen
+              </button>
             </div>
           </div>
         </div>

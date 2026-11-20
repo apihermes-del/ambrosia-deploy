@@ -23,6 +23,12 @@ interface AppContextType {
   users: UserProfile[];
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
+  setKitchens: (kitchens: Kitchen[]) => void;
+  setPickupLocations: (locations: PickupLocation[]) => void;
+  addPickupLocation: (name: string, category: PickupLocation['category']) => void;
+  removePickupLocation: (id: string) => void;
+  addKitchen: (name: string, description?: string) => void;
+  removeKitchen: (id: string) => void;
   onDutyDrivers: string[]; // for backwards compatibility / today
   getOnDutyDriversForDate: (date: string) => string[];
   settingsConfig: AdminSettingsConfig;
@@ -79,8 +85,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(mockUsers[0]);
   const [users] = useState<UserProfile[]>(mockUsers);
-  const [kitchens] = useState<Kitchen[]>(mockKitchens);
-  const [pickupLocations] = useState<PickupLocation[]>(mockPickupLocations);
+  const [kitchens, setKitchens] = useState<Kitchen[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ambrosia_kitchens');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return mockKitchens;
+  });
+
+  const [pickupLocations, setPickupLocations] = useState<PickupLocation[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ambrosia_pickup_locations');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return mockPickupLocations;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_kitchens', JSON.stringify(kitchens));
+  }, [kitchens]);
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_pickup_locations', JSON.stringify(pickupLocations));
+  }, [pickupLocations]);
+
+  const addPickupLocation = (name: string, category: PickupLocation['category']) => {
+    const newLoc: PickupLocation = {
+      id: `loc-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      category,
+      is_active: true,
+    };
+    setPickupLocations(prev => [...prev, newLoc]);
+    addLog('SYSTEM', 'Pickup Location Added', `${name} (${category.replace('_', ' ')})`);
+  };
+
+  const removePickupLocation = (id: string) => {
+    setPickupLocations(prev => prev.filter(l => l.id !== id));
+    addLog('SYSTEM', 'Pickup Location Removed', `ID: ${id}`);
+  };
+
+  const addKitchen = (name: string, description: string = '') => {
+    const newK: Kitchen = {
+      id: `k-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      description,
+      is_active: true,
+    };
+    setKitchens(prev => [...prev, newK]);
+    addLog('SYSTEM', 'Kitchen Added', name);
+  };
+
+  const removeKitchen = (id: string) => {
+    setKitchens(prev => prev.filter(k => k.id !== id));
+    addLog('SYSTEM', 'Kitchen Removed', `ID: ${id}`);
+  };
   const [dailyRosters, setDailyRosters] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -394,6 +457,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       users,
       kitchens,
       pickupLocations,
+      setKitchens,
+      setPickupLocations,
+      addPickupLocation,
+      removePickupLocation,
+      addKitchen,
+      removeKitchen,
       onDutyDrivers,
       getOnDutyDriversForDate,
       settingsConfig,
