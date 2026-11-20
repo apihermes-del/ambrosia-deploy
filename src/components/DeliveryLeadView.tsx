@@ -49,14 +49,20 @@ export const DeliveryLeadView: React.FC = () => {
   const isTomorrowView = selectedDate === tomorrowStr;
 
   const handleCopyFourWheelerText = (order: Order) => {
-    const itemsList = order.items.map(i => `${i.item_name} (${i.size_or_weight})`).join(', ');
+    const formattedDate = new Date(order.delivery_date).toLocaleDateString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    const itemsList = order.items.map(i => `${i.item_name} (${i.size_or_weight} - Qty: ${i.quantity})`).join(', ');
     const balanceText = order.payment_status === 'credit'
       ? 'Credit Account (Do not collect cash)'
       : order.pending_amount > 0 
       ? `₹${order.pending_amount}` 
-      : '₹0 (Paid in advance)';
+      : '₹0 (Paid in full)';
 
-    const textToCopy = `4-Wheeler required on ${order.delivery_date} for delivery at ${order.delivery_time_slot} to ${order.delivery_area} (${order.customer_name}) for ${itemsList}. Balance payment of ${balanceText} to be collected on delivery.`;
+    const textToCopy = `4-Wheeler required on ${formattedDate} for delivery at ${order.delivery_time_slot} to ${order.delivery_area} (${order.customer_name}) for ${itemsList}. Balance payment of ${balanceText} to be collected on delivery.`;
 
     navigator.clipboard.writeText(textToCopy);
     setCopiedOrderId(order.id);
