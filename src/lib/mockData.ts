@@ -1,7 +1,7 @@
 import { UserProfile, Kitchen, PickupLocation, Order, OrderLog } from '@/types';
 
 export const mockUsers: UserProfile[] = [
-  { id: 'u1', full_name: 'Priya Sharma (Admin)', phone_number: '+91 98470 12340', role: 'super_admin', is_active: true },
+  { id: 'u_admin_owner', full_name: 'Rishikesh (Ambrosia owner)', phone_number: '+91 77362 82122', role: 'super_admin', is_active: true, department: 'Management / Ownership' },
   { id: 'u2', full_name: 'Kavita Desk', phone_number: '+91 98470 12341', role: 'customer_care', is_active: true },
   { id: 'u3', full_name: 'Chef Anil (Setting)', phone_number: '+91 98470 12342', role: 'cake_setting', is_active: true },
   { id: 'u4', full_name: 'Chef Ramesh (Setting)', phone_number: '+91 98470 12343', role: 'cake_setting', is_active: true },
