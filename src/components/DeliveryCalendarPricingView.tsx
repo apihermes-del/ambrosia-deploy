@@ -8,85 +8,103 @@ import {
   Calculator, 
   Clock, 
   IndianRupee, 
-  Settings, 
-  Sliders, 
+  Search, 
   CheckCircle2, 
   Info,
-  Car
+  Car,
+  Navigation,
+  Sparkles
 } from 'lucide-react';
-import { trivandrumLocations, calculateDeliveryFee, estimateRoundTripMinutes } from '@/lib/deliveryPricing';
+import { 
+  trivandrumLocations, 
+  calculateDeliveryFee, 
+  estimateRoundTripMinutes,
+  generateTimeSlots,
+  slotColorThemes,
+  getGoogleMapsNavigationUrl
+} from '@/lib/deliveryPricing';
 
 export const DeliveryCalendarPricingView: React.FC = () => {
-  const { orders, pricingConfig, updatePricingConfig, currentUser } = useApp();
+  const { orders, settingsConfig } = useApp();
   
-  // Date filter for calendar slot inspection
+  // Date filter
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-  // Delivery Calculator State
-  const [inputKm, setInputKm] = useState<number>(6.5);
-  const [selectedPresetArea, setSelectedPresetArea] = useState<string>('');
-  const [customAddress, setCustomAddress] = useState<string>('');
+  // Dynamic Free-form Address Input & Autocomplete State
+  const [addressSearchInput, setAddressSearchInput] = useState<string>('Sreekaryam, Trivandrum');
+  const [customDistanceKm, setCustomDistanceKm] = useState<number>(9.5);
+  const [isTypingLocation, setIsTypingLocation] = useState(false);
+  const [matchedLocationName, setMatchedLocationName] = useState<string>('Sreekaryam / Loyola');
 
-  // Settings State (Admin accessible)
-  const [isEditingSettings, setIsEditingSettings] = useState(false);
-  const [freeRadiusInput, setFreeRadiusInput] = useState(pricingConfig.freeRadiusKm);
-  const [firstExtraInput, setFirstExtraInput] = useState(pricingConfig.firstExtraKmCharge);
-  const [perExtraInput, setPerExtraInput] = useState(pricingConfig.perExtraKmCharge);
-  const [settingsSavedBanner, setSettingsSavedBanner] = useState(false);
+  // Dynamically generate slots from admin opening/closing/duration settings
+  const dynamicSlots = generateTimeSlots(
+    settingsConfig.openingTime,
+    settingsConfig.closingTime,
+    settingsConfig.slotDurationHours
+  );
 
-  // Time slots definition for checking slot capacity & bookings
-  const timeSlots = [
-    '10:00 - 12:00',
-    '12:00 - 14:00',
-    '14:00 - 16:00',
-    '16:00 - 18:00',
-    '18:00 - 20:00',
-    '20:00 - 22:00',
-  ];
+  // Maximum slot capacity = total delivery drivers * deliveries per driver per slot
+  const slotCapacity = settingsConfig.totalDeliveryEmployees * (settingsConfig.maxDeliveriesPerDriverPerSlot || 1);
 
-  // Orders on selected date
-  const dateOrders = orders.filter(o => o.delivery_date === selectedDate && o.status !== 'cancelled');
+  // CRITICAL FIX: ONLY filter home_delivery orders! Exclude outlet pickups completely!
+  const dateHomeDeliveryOrders = orders.filter(
+    o => o.order_type === 'home_delivery' && 
+         o.delivery_date === selectedDate && 
+         o.status !== 'cancelled'
+  );
 
-  // Handle Preset Area selection
-  const handleSelectArea = (areaName: string) => {
-    setSelectedPresetArea(areaName);
-    const loc = trivandrumLocations.find(l => l.name === areaName);
-    if (loc) {
-      setInputKm(loc.distanceKm);
-      setCustomAddress(`${areaName}, Trivandrum`);
+  // Filter suggestion list based on user typing
+  const searchResults = trivandrumLocations.filter(loc => 
+    loc.name.toLowerCase().includes(addressSearchInput.toLowerCase().trim())
+  );
+
+  // Auto-detect matching locality distance from free text
+  const handleAddressTextChange = (text: string) => {
+    setAddressSearchInput(text);
+    setIsTypingLocation(true);
+
+    const lower = text.toLowerCase().trim();
+    const found = trivandrumLocations.find(l => 
+      lower.includes(l.name.toLowerCase().split('/')[0].trim()) ||
+      l.name.toLowerCase().includes(lower)
+    );
+
+    if (found) {
+      setCustomDistanceKm(found.distanceKm);
+      setMatchedLocationName(found.name);
     }
   };
 
-  const calculatedFee = calculateDeliveryFee(inputKm, pricingConfig);
-  const roundTripTime = estimateRoundTripMinutes(inputKm);
-
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    updatePricingConfig({
-      ...pricingConfig,
-      freeRadiusKm: Number(freeRadiusInput),
-      firstExtraKmCharge: Number(firstExtraInput),
-      perExtraKmCharge: Number(perExtraInput),
-    });
-    setIsEditingSettings(false);
-    setSettingsSavedBanner(true);
-    setTimeout(() => setSettingsSavedBanner(false), 4000);
+  const handleSelectSuggestion = (loc: typeof trivandrumLocations[0]) => {
+    setAddressSearchInput(`${loc.name}, Trivandrum`);
+    setCustomDistanceKm(loc.distanceKm);
+    setMatchedLocationName(loc.name);
+    setIsTypingLocation(false);
   };
 
+  const calculatedFee = calculateDeliveryFee(customDistanceKm, settingsConfig);
+  const roundTripTime = estimateRoundTripMinutes(customDistanceKm);
+
+  // Construct dynamic Google Maps Route URL
+  const googleMapsRouteUrl = getGoogleMapsNavigationUrl(
+    addressSearchInput,
+    matchedLocationName || 'Trivandrum'
+  );
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-amber-200/60">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/60">
         <div>
           <h1 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-2">
-            Delivery Slot Calendar & Distance Pricing
+            Delivery Slot Calendar & Live Distance Engine
             <span className="text-xs bg-amber-600 text-white font-sans font-semibold px-2.5 py-0.5 rounded-full">
-              Smart Rate Engine
+              Home Deliveries Only
             </span>
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Check live slot occupancy before booking, calculate accurate distance delivery charges from Bakery Junction, and estimate round trip transit times.
+          <p className="text-xs text-gray-600 mt-0.5">
+            Color-coded time slots for quick visual differentiation. Outlet pickups are excluded to strictly monitor driver capacity.
           </p>
         </div>
 
@@ -103,93 +121,95 @@ export const DeliveryCalendarPricingView: React.FC = () => {
         </div>
       </div>
 
-      {settingsSavedBanner && (
-        <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          Delivery pricing formula successfully updated!
-        </div>
-      )}
-
-      {/* Grid: Calendar View on Left + Delivery Distance Calculator on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Grid: Color-coded Calendar on Left + Free Address Distance Engine on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ========================================================================= */}
-        {/* LEFT: SLOT CALENDAR & OCCUPANCY (7 COLS) */}
+        {/* LEFT: COLOR-CODED TIME SLOTS (7 COLS) */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+        <div className="lg:col-span-7 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
               <div>
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-600" />
-                  Scheduled Deliveries for {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  Slots for {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Slot occupancy overview to prevent kitchen overload and driver bottlenecks.
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Operating Hours: {settingsConfig.openingTime} to {settingsConfig.closingTime} ({settingsConfig.slotDurationHours}h slots • Max {slotCapacity} deliveries/slot)
                 </p>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg">
-                {dateOrders.length} Bookings
+                {dateHomeDeliveryOrders.length} Home Deliveries
               </span>
             </div>
 
-            {/* Slots Matrix */}
-            <div className="space-y-4">
-              {timeSlots.map(slot => {
-                const slotOrders = dateOrders.filter(o => o.delivery_time_slot === slot);
-                const isHeavy = slotOrders.length >= 3;
-                const isModerate = slotOrders.length === 2;
+            {/* Distinct Color-Coded Slots Matrix */}
+            <div className="space-y-3.5">
+              {dynamicSlots.map((slot, index) => {
+                const colorTheme = slotColorThemes[index % slotColorThemes.length];
+                const slotOrders = dateHomeDeliveryOrders.filter(o => o.delivery_time_slot === slot);
+                const isOverCapacity = slotOrders.length >= slotCapacity;
+                const isNearCapacity = slotOrders.length === slotCapacity - 1 && slotCapacity > 1;
 
                 return (
                   <div 
                     key={slot} 
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      isHeavy 
-                        ? 'border-rose-200 bg-rose-50/40' 
-                        : isModerate 
-                        ? 'border-amber-200 bg-amber-50/30' 
-                        : 'border-gray-200 bg-white'
-                    }`}
+                    className={`rounded-xl border-2 ${colorTheme.border} ${colorTheme.bg} overflow-hidden transition-all shadow-xs`}
                   >
-                    <div className="flex items-center justify-between">
+                    {/* Slot Header Banner */}
+                    <div className={`px-3 py-2 ${colorTheme.header} flex items-center justify-between border-b ${colorTheme.border}`}>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-900">{slot}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isHeavy ? 'bg-rose-100 text-rose-800' :
-                          isModerate ? 'bg-amber-100 text-amber-800' :
-                          'bg-emerald-100 text-emerald-800'
+                        <span className="w-2.5 h-2.5 rounded-full bg-current opacity-80" />
+                        <span className="text-xs font-black tracking-wide">{slot}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                          isOverCapacity ? 'bg-rose-600 text-white border-rose-700 animate-pulse' :
+                          isNearCapacity ? 'bg-amber-500 text-white border-amber-600' :
+                          'bg-emerald-600 text-white border-emerald-700'
                         }`}>
-                          {slotOrders.length} {slotOrders.length === 1 ? 'Order' : 'Orders'} {isHeavy ? '⚠️ Busy Slot' : isModerate ? '⚡ Moderate' : '✓ Available'}
+                          {slotOrders.length} / {slotCapacity} {isOverCapacity ? '⛔ FULL' : isNearCapacity ? '⚡ 1 Slot Left' : '✓ Open'}
                         </span>
                       </div>
-
-                      <span className="text-[11px] text-gray-400 font-medium">
-                        Capacity: 4 orders/slot
-                      </span>
                     </div>
 
-                    {/* Bookings inside slot */}
-                    {slotOrders.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-gray-100 space-y-1.5">
-                        {slotOrders.map(o => (
-                          <div key={o.id} className="text-xs flex items-center justify-between bg-white/80 p-2 rounded-lg border border-gray-200/70">
-                            <div>
-                              <span className="font-mono font-bold text-amber-950">{o.tally_so_number}</span>
-                              <span className="text-gray-800 font-semibold ml-2">{o.customer_name}</span>
-                              <span className="text-gray-500 text-[11px] ml-2">({o.delivery_area})</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {o.assignment_type === 'four_wheeler' && (
-                                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">
-                                  🚙 4-Wheeler
+                    {/* Booked Deliveries in this Slot */}
+                    <div className="p-3">
+                      {slotOrders.length === 0 ? (
+                        <div className="text-[11px] text-gray-400 italic py-1">
+                          No deliveries booked in this slot yet. Available for customer care scheduling.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {slotOrders.map(o => (
+                            <div 
+                              key={o.id} 
+                              className="text-xs bg-white/95 p-2 rounded-lg border border-gray-200/80 flex items-center justify-between shadow-2xs"
+                            >
+                              <div>
+                                <span className="font-mono font-bold text-gray-900">{o.tally_so_number}</span>
+                                <span className="text-gray-900 font-bold ml-2">{o.customer_name}</span>
+                                <span className={`text-[11px] font-semibold ml-2 ${colorTheme.accent}`}>
+                                  📍 {o.delivery_area}
                                 </span>
-                              )}
-                              <span className="text-[11px] font-bold text-gray-700">₹{o.total_amount}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {o.assignment_type === 'four_wheeler' && (
+                                  <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">
+                                    🚙 4-Wheeler
+                                  </span>
+                                )}
+                                <span className="font-bold text-gray-700 text-[11px]">
+                                  ₹{o.total_amount}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -199,79 +219,91 @@ export const DeliveryCalendarPricingView: React.FC = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* RIGHT: TRIVANDRUM DELIVERY DISTANCE & PRICING CALCULATOR (5 COLS) */}
+        {/* RIGHT: TYPE-ANY-DESTINATION DISTANCE & RATE ENGINE (5 COLS) */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+        <div className="lg:col-span-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            <div className="border-b border-gray-100 pb-3 mb-4">
+              <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-amber-600" />
-                Delivery Distance & Rate Engine
+                Live Distance & Rate Engine
               </h2>
-              <button
-                onClick={() => setIsEditingSettings(!isEditingSettings)}
-                className="text-xs text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1"
-                title="Configure Pricing Formula"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                Formula Settings
-              </button>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Type any street, landmark, or suburb in Trivandrum to compute delivery fee & transit time.
+              </p>
             </div>
 
             {/* Bakery Hub Reference */}
-            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1 mb-4">
-              <div className="flex items-center gap-1 font-bold">
-                <MapPin className="w-3.5 h-3.5 text-amber-700" />
-                Origin: Ambrosia Bakery Junction, Trivandrum
-              </div>
-              <div className="text-[11px] text-gray-600">
-                Opposite Bharath Petroleum, Krishna Towers
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-amber-700 flex-shrink-0" />
+              <div>
+                <span className="font-bold block">Origin: Ambrosia Bakery Junction Hub</span>
+                <span className="text-[10px] text-gray-600">Krishna Towers, Opp. Bharath Petroleum, Trivandrum</span>
               </div>
             </div>
 
-            {/* Quick Area Preset Selector */}
-            <div className="space-y-3">
-              <label className="block text-xs font-semibold text-gray-700">
-                Select Destination Suburb (Trivandrum City):
-              </label>
-              <select
-                value={selectedPresetArea}
-                onChange={e => handleSelectArea(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white"
-              >
-                <option value="">-- Or Pick Pre-mapped Location --</option>
-                {trivandrumLocations.map(loc => (
-                  <option key={loc.name} value={loc.name}>
-                    {loc.name} (~{loc.distanceKm} km from bakery)
-                  </option>
-                ))}
-              </select>
-
-              {/* Exact Distance Input */}
+            {/* Free-form Address Input with Autocomplete dropdown */}
+            <div className="space-y-3 relative">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Or Input One-Way Road Distance (Kilometers):
+                  Type Customer Address or Suburb:
                 </label>
                 <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
                   <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={inputKm}
-                    onChange={e => {
-                      setInputKm(Number(e.target.value));
-                      setSelectedPresetArea('');
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-bold"
+                    type="text"
+                    placeholder="e.g. Kowdiar, Medical College, Sreekaryam, Technopark..."
+                    value={addressSearchInput}
+                    onChange={e => handleAddressTextChange(e.target.value)}
+                    onFocus={() => setIsTypingLocation(true)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-medium bg-white"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-semibold">km</span>
+                </div>
+
+                {/* Autocomplete Dropdown */}
+                {isTypingLocation && searchResults.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 py-1 divide-y divide-gray-50">
+                    {searchResults.map(loc => (
+                      <button
+                        key={loc.name}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(loc)}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 flex items-center justify-between"
+                      >
+                        <span className="font-semibold text-gray-900">{loc.name}</span>
+                        <span className="text-[11px] font-mono text-amber-800 font-bold">~{loc.distanceKm} km</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Road Distance Slider / Input */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-gray-700 mb-1">
+                  <span>Computed Road Distance:</span>
+                  <span className="font-bold font-mono text-amber-900">{customDistanceKm} km</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="35"
+                  step="0.1"
+                  value={customDistanceKm}
+                  onChange={e => setCustomDistanceKm(Number(e.target.value))}
+                  className="w-full accent-amber-600 cursor-pointer"
+                />
+                <div className="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
+                  <span>0.5 km (City Center)</span>
+                  <span>5 km (Free Cutoff)</span>
+                  <span>35 km (Outer Trivandrum)</span>
                 </div>
               </div>
 
               {/* Calculated Pricing Card */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-300 space-y-3 mt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-700">Calculated Delivery Charge:</span>
+                  <span className="text-xs font-bold text-gray-700">Calculated Delivery Fee:</span>
                   <span className={`text-2xl font-black ${calculatedFee === 0 ? 'text-emerald-700' : 'text-amber-950'}`}>
                     {calculatedFee === 0 ? 'FREE DELIVERY' : `₹${calculatedFee}`}
                   </span>
@@ -280,23 +312,23 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                 <div className="text-[11px] text-gray-600 space-y-1 pt-2 border-t border-amber-200/60">
                   <div className="flex items-center justify-between">
                     <span>Free Delivery Allowance:</span>
-                    <span className="font-semibold">{pricingConfig.freeRadiusKm} km</span>
+                    <span className="font-semibold">{settingsConfig.freeRadiusKm} km</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Chargable Distance:</span>
+                    <span>Chargeable Distance:</span>
                     <span className="font-semibold">
-                      {inputKm <= pricingConfig.freeRadiusKm ? '0 km' : `${(inputKm - pricingConfig.freeRadiusKm).toFixed(1)} km`}
+                      {customDistanceKm <= settingsConfig.freeRadiusKm ? '0 km' : `${(customDistanceKm - settingsConfig.freeRadiusKm).toFixed(1)} km`}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-amber-900 font-bold pt-1">
                     <span className="flex items-center gap-1">
-                      <Car className="w-3.5 h-3.5" /> Estimated To-and-Fro Transit:
+                      <Car className="w-3.5 h-3.5" /> Estimated Round-Trip Transit:
                     </span>
                     <span>~{roundTripTime} minutes</span>
                   </div>
                 </div>
 
-                {inputKm > 10 && (
+                {customDistanceKm > 10 && (
                   <div className="p-2 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-900 flex items-start gap-1.5">
                     <Info className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <span>
@@ -306,83 +338,23 @@ export const DeliveryCalendarPricingView: React.FC = () => {
                 )}
               </div>
 
-              {/* Google Maps External Verification */}
+              {/* "Verify Exact Route on Google Maps" Button Explanation & Link */}
               <div className="pt-2">
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-                    'Ambrosia Bakery, Bakery Junction, Trivandrum'
-                  )}&destination=${encodeURIComponent((selectedPresetArea || `${inputKm}km from Bakery Junction`) + ', Trivandrum')}&travelmode=driving`}
+                  href={googleMapsRouteUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full py-2 px-3 text-xs font-semibold text-center text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2.5 px-3 text-xs font-bold text-center text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-2xs"
                 >
-                  <MapPin className="w-3.5 h-3.5" />
+                  <Navigation className="w-4 h-4" />
                   Verify Exact Route on Google Maps
                 </a>
+                <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed text-center">
+                  Opens Google Maps Directions with <strong>Ambrosia Bakery Junction</strong> pre-set as the origin and your typed address as the destination to inspect real-time live traffic, road blocks, or route pins.
+                </p>
               </div>
+
             </div>
-
-            {/* Formula Settings Panel (Toggled by Admin) */}
-            {isEditingSettings && (
-              <form onSubmit={handleSaveSettings} className="mt-6 pt-5 border-t border-gray-200 space-y-3">
-                <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                  <Sliders className="w-3.5 h-3.5 text-amber-700" />
-                  Admin Pricing Formula Configuration
-                </h4>
-
-                <div>
-                  <label className="block text-[11px] text-gray-600 font-semibold mb-1">
-                    Free Delivery Radius (km):
-                  </label>
-                  <input
-                    type="number"
-                    value={freeRadiusInput}
-                    onChange={e => setFreeRadiusInput(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] text-gray-600 font-semibold mb-1">
-                    First Extra Km Charge (₹):
-                  </label>
-                  <input
-                    type="number"
-                    value={firstExtraInput}
-                    onChange={e => setFirstExtraInput(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] text-gray-600 font-semibold mb-1">
-                    Subsequent Each Extra Km Charge (₹):
-                  </label>
-                  <input
-                    type="number"
-                    value={perExtraInput}
-                    onChange={e => setPerExtraInput(Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingSettings(false)}
-                    className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1 text-xs font-bold bg-amber-600 text-white rounded hover:bg-amber-700"
-                  >
-                    Save Formula
-                  </button>
-                </div>
-              </form>
-            )}
 
           </div>
         </div>

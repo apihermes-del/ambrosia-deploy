@@ -72,7 +72,8 @@ export interface OrderLog {
   details?: string;
 }
 
-export interface DeliveryPricingConfig {
+export interface AdminSettingsConfig {
+  // Pricing
   freeRadiusKm: number;
   firstExtraKmCharge: number;
   perExtraKmCharge: number;
@@ -81,6 +82,13 @@ export interface DeliveryPricingConfig {
     lat: number;
     lng: number;
   };
+  // Slot configurations
+  openingTime: string; // e.g. "09:00"
+  closingTime: string; // e.g. "21:00"
+  slotDurationHours: number; // e.g. 1 or 2
+  // Staff capacity
+  totalDeliveryEmployees: number; // e.g. 4
+  maxDeliveriesPerDriverPerSlot: number; // e.g. 2 -> slot capacity = drivers * max
 }
 
 export interface Order {
@@ -105,8 +113,8 @@ export interface Order {
   
   // Assignment details
   assignment_type: AssignmentType;
-  assigned_delivery_user_id?: string; // driver ID if assignment_type === 'driver'
-  third_party_reference?: string;    // e.g. Porter booking ID or 4-wheeler driver note
+  assigned_delivery_user_id?: string;
+  third_party_reference?: string;
   
   pickup_location_id?: string;
   total_amount: number;
@@ -117,10 +125,9 @@ export interface Order {
   delivery_payment_mode?: PaymentMode;
   special_notes?: string;
   
-  is_edited_flag?: boolean; // Flagged when customer care modifies an active order
+  is_edited_flag?: boolean;
   edited_summary?: string;
   
-  // Day closeout flags
   driver_day_closed?: boolean;
   driver_day_closed_at?: string;
   admin_day_reconciled?: boolean;

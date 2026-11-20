@@ -9,10 +9,10 @@ import {
   Store, 
   ShieldCheck, 
   History, 
-  MapPin, 
   Calendar,
   ChevronDown,
-  Navigation
+  Navigation,
+  Sliders
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,10 +24,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShowLogsModal }) => {
   const { currentUser, setCurrentUserRole, users, setCurrentUser, logs } = useApp();
 
-  // Strict Role Capabilities
-  // Delivery boy: Can ONLY access 'delivery'
-  // Cake setting: Can ONLY access 'kitchen' and 'outlet'
-  // Customer care & Admin & Delivery Lead: Full access or role-specific access
   const allTabs = [
     { id: 'desk', label: 'Customer Care & Booking', icon: Headphones, allowedRoles: ['super_admin', 'customer_care'] },
     { id: 'calendar', label: 'Slot Calendar & Pricing', icon: Calendar, allowedRoles: ['super_admin', 'customer_care', 'delivery_lead'] },
@@ -36,12 +32,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
     { id: 'delivery', label: 'Driver App View', icon: Truck, allowedRoles: ['super_admin', 'delivery', 'delivery_lead', 'customer_care'] },
     { id: 'outlet', label: 'Outlet Counter Pickups', icon: Store, allowedRoles: ['super_admin', 'customer_care', 'cake_setting', 'outlet'] },
     { id: 'admin', label: 'Closeout & Settlements', icon: ShieldCheck, allowedRoles: ['super_admin', 'customer_care', 'delivery_lead'] },
+    { id: 'settings', label: 'Admin Settings', icon: Sliders, allowedRoles: ['super_admin'] },
   ];
 
-  // Filter tabs visible or authorized for the current user's role
   const visibleTabs = allTabs.filter(tab => tab.allowedRoles.includes(currentUser.role));
 
-  // If active tab is not in visible tabs (e.g. switched to delivery user), auto switch tab
   React.useEffect(() => {
     if (!visibleTabs.some(t => t.id === activeTab)) {
       if (currentUser.role === 'delivery') {
@@ -75,7 +70,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
           {/* Role switcher & Activity Logs Button */}
           <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Activity Audit Log Button */}
             <button
               onClick={() => setShowLogsModal(true)}
               className="flex items-center gap-1.5 bg-amber-900/60 hover:bg-amber-800 border border-amber-700/80 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-200 transition-colors"
@@ -88,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
               </span>
             </button>
 
-            {/* Quick Role Simulator Selector */}
+            {/* Quick Role Switcher */}
             <div className="hidden lg:flex items-center gap-1 bg-amber-900/60 p-1 rounded-lg border border-amber-800 text-xs text-amber-200">
               <span className="px-2 font-medium text-amber-400">Switch Role:</span>
               <button 
@@ -160,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
         </div>
       </div>
 
-      {/* Main Role Navigation Tabs */}
+      {/* Main Navigation Tabs */}
       <div className="bg-amber-900/90 border-t border-amber-800/80 px-4">
         <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-2 no-scrollbar">
           {visibleTabs.map(tab => {

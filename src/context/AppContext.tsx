@@ -9,12 +9,12 @@ import {
   OrderStatus, 
   ItemStatus, 
   OrderLog, 
-  DeliveryPricingConfig,
+  AdminSettingsConfig,
   AssignmentType,
   PaymentMode
 } from '@/types';
 import { initialOrders, mockUsers, mockKitchens, mockPickupLocations, initialLogs } from '@/lib/mockData';
-import { defaultPricingConfig } from '@/lib/deliveryPricing';
+import { defaultSettingsConfig } from '@/lib/deliveryPricing';
 
 interface AppContextType {
   orders: Order[];
@@ -23,9 +23,9 @@ interface AppContextType {
   users: UserProfile[];
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
-  onDutyDrivers: string[]; // driver user ids
-  pricingConfig: DeliveryPricingConfig;
-  updatePricingConfig: (config: DeliveryPricingConfig) => void;
+  onDutyDrivers: string[];
+  settingsConfig: AdminSettingsConfig;
+  updateSettingsConfig: (config: AdminSettingsConfig) => void;
   setCurrentUserRole: (role: UserProfile['role']) => void;
   setCurrentUser: (user: UserProfile) => void;
   addLog: (orderId: string, action: string, details?: string) => void;
@@ -48,7 +48,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ambrosia_orders_v2');
+      const saved = localStorage.getItem('ambrosia_orders_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { console.error(e); }
       }
@@ -58,7 +58,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [logs, setLogs] = useState<OrderLog[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ambrosia_logs_v2');
+      const saved = localStorage.getItem('ambrosia_logs_v3');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { console.error(e); }
       }
@@ -66,37 +66,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return initialLogs;
   });
 
-  const [pricingConfig, setPricingConfig] = useState<DeliveryPricingConfig>(() => {
+  const [settingsConfig, setSettingsConfig] = useState<AdminSettingsConfig>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ambrosia_pricing_config');
+      const saved = localStorage.getItem('ambrosia_admin_settings');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { console.error(e); }
       }
     }
-    return defaultPricingConfig;
+    return defaultSettingsConfig;
   });
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(mockUsers[0]);
   const [users] = useState<UserProfile[]>(mockUsers);
   const [kitchens] = useState<Kitchen[]>(mockKitchens);
   const [pickupLocations] = useState<PickupLocation[]>(mockPickupLocations);
-  const [onDutyDrivers, setOnDutyDrivers] = useState<string[]>(['u5', 'u6']); // Deepu & Suresh on duty
+  const [onDutyDrivers, setOnDutyDrivers] = useState<string[]>(['u5', 'u6']);
 
   useEffect(() => {
-    localStorage.setItem('ambrosia_orders_v2', JSON.stringify(orders));
+    localStorage.setItem('ambrosia_orders_v3', JSON.stringify(orders));
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('ambrosia_logs_v2', JSON.stringify(logs));
+    localStorage.setItem('ambrosia_logs_v3', JSON.stringify(logs));
   }, [logs]);
 
   useEffect(() => {
-    localStorage.setItem('ambrosia_pricing_config', JSON.stringify(pricingConfig));
-  }, [pricingConfig]);
+    localStorage.setItem('ambrosia_admin_settings', JSON.stringify(settingsConfig));
+  }, [settingsConfig]);
 
-  const updatePricingConfig = (newConfig: DeliveryPricingConfig) => {
-    setPricingConfig(newConfig);
-    addLog('SYSTEM', 'Delivery Pricing Updated', `Free: ${newConfig.freeRadiusKm}km, 1st: ₹${newConfig.firstExtraKmCharge}, +km: ₹${newConfig.perExtraKmCharge}`);
+  const updateSettingsConfig = (newConfig: AdminSettingsConfig) => {
+    setSettingsConfig(newConfig);
+    addLog(
+      'SYSTEM', 
+      'Admin Settings Updated', 
+      `Slots: ${newConfig.openingTime}-${newConfig.closingTime} (${newConfig.slotDurationHours}h), Drivers: ${newConfig.totalDeliveryEmployees}, Free: ${newConfig.freeRadiusKm}km`
+    );
   };
 
   const addLog = (orderId: string, action: string, details?: string) => {
@@ -136,7 +140,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }))
     };
     setOrders(prev => [newOrder, ...prev]);
-    addLog(id, 'Order Created', `Tally SO: ${newOrder.tally_so_number} for ${newOrder.customer_name} (Payment: ${newOrder.payment_status.toUpperCase()})`);
+    addLog(id, 'Order Created', `Tally SO: ${newOrder.tally_so_number} for ${newOrder.customer_name} (Type: ${newOrder.order_type})`);
   };
 
   const updateOrder = (orderId: string, updatedFields: Partial<Order>, editSummary?: string) => {
@@ -325,8 +329,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       kitchens,
       pickupLocations,
       onDutyDrivers,
-      pricingConfig,
-      updatePricingConfig,
+      settingsConfig,
+      updateSettingsConfig,
       setCurrentUserRole,
       setCurrentUser,
       addLog,

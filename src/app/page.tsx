@@ -10,6 +10,7 @@ import { DeliveryDriverView } from '@/components/DeliveryDriverView';
 import { OutletPickupView } from '@/components/OutletPickupView';
 import { AdminCloseoutView } from '@/components/AdminCloseoutView';
 import { DeliveryCalendarPricingView } from '@/components/DeliveryCalendarPricingView';
+import { AdminSettingsView } from '@/components/AdminSettingsView';
 import { AuditLogModal } from '@/components/AuditLogModal';
 
 export default function Home() {
@@ -33,6 +34,7 @@ export default function Home() {
           {activeTab === 'delivery' && <DeliveryDriverView />}
           {activeTab === 'outlet' && <OutletPickupView />}
           {activeTab === 'admin' && <AdminCloseoutView />}
+          {activeTab === 'settings' && <AdminSettingsView />}
         </main>
 
         <AuditLogModal 

@@ -21,7 +21,7 @@ import {
 import { calculateDeliveryFee } from '@/lib/deliveryPricing';
 
 export const CustomerCareView: React.FC = () => {
-  const { createOrder, updateOrder, cancelOrder, orders, pricingConfig, currentUser } = useApp();
+  const { createOrder, updateOrder, cancelOrder, orders, settingsConfig, currentUser } = useApp();
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'new_booking' | 'manage_orders'>('new_booking');
 
@@ -112,7 +112,7 @@ export const CustomerCareView: React.FC = () => {
     const targetDate = new Date(deliveryDate);
     targetDate.setHours(isNaN(hours) ? 14 : hours, isNaN(minutes) ? 0 : minutes, 0, 0);
 
-    const deliveryFee = orderType === 'home_delivery' ? calculateDeliveryFee(deliveryDistanceKm, pricingConfig) : 0;
+    const deliveryFee = orderType === 'home_delivery' ? calculateDeliveryFee(deliveryDistanceKm, settingsConfig) : 0;
 
     if (editingOrder) {
       // Modifying existing order
