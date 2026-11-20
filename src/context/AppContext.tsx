@@ -289,8 +289,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addLog(
       'ROSTER', 
       `Driver Duty: ${driver?.full_name} (${dateKey})`, 
-      isNowDuty ? 'Marked ON DUTY' : 'Marked OFF DUTY'
+      isNowDuty ? 'Marked ON DUTY' : 'Marked OFF DUTY (Reverted assigned orders to Unassigned)'
     );
+
+    // If driver is marked OFF duty, automatically unassign any active orders assigned to them on this date!
+    if (!isNowDuty) {
+      setOrders(prev => prev.map(order => {
+        if (
+          order.order_type === 'home_delivery' &&
+          order.delivery_date === dateKey &&
+          order.assigned_delivery_user_id === driverUserId &&
+          !['delivered', 'cancelled'].includes(order.status)
+        ) {
+          return {
+            ...order,
+            assignment_type: 'unassigned',
+            assigned_delivery_user_id: undefined,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return order;
+      }));
+    }
   };
 
   const markDelivered = (orderId: string, paymentCollected: number, paymentMode: PaymentMode) => {

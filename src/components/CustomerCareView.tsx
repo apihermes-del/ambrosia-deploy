@@ -68,6 +68,28 @@ export const CustomerCareView: React.FC = () => {
     setDeliveryDate(new Date().toISOString().split('T')[0]);
   }, []);
 
+  // Filter deliveries due in the next 5 hours that remain UNASSIGNED
+  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
+  React.useEffect(() => {
+    setNowTimestamp(Date.now());
+    const interval = setInterval(() => setNowTimestamp(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unassignedUrgentDeliveries = nowTimestamp === 0 ? [] : orders.filter(order => {
+    if (order.order_type !== 'home_delivery') return false;
+    if (['delivered', 'cancelled'].includes(order.status)) return false;
+    
+    // Check if unassigned
+    const isUnassigned = order.assignment_type === 'unassigned' || !order.assigned_delivery_user_id;
+    if (!isUnassigned) return false;
+
+    // Check if target delivery time is within the next 5 hours (or already overdue)
+    const targetMs = new Date(order.target_delivery_time).getTime();
+    const diffHours = (targetMs - nowTimestamp) / (1000 * 60 * 60);
+    return diffHours <= 5;
+  });
+
   const addItemRow = () => {
     setItems(prev => [
       ...prev,
@@ -306,6 +328,25 @@ export const CustomerCareView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* CUSTOMER CARE URGENT WARNING BANNER: Deliveries due within 5 hours that are unassigned */}
+      {unassignedUrgentDeliveries.length > 0 && (
+        <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-400 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500 text-white font-black">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-amber-900">
+                Urgent Dispatch Alert: {unassignedUrgentDeliveries.length} {unassignedUrgentDeliveries.length === 1 ? 'Delivery' : 'Deliveries'} Due in Next 5 Hours with NO Assigned Rider!
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Orders: {unassignedUrgentDeliveries.map(o => `${o.tally_so_number} (${o.delivery_time_slot})`).join(', ')}. Please coordinate with the Delivery Lead to assign a rider or 4-wheeler immediately.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {successBanner && (
         <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 flex items-center gap-3">

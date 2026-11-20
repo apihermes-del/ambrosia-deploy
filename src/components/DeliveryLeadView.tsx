@@ -49,7 +49,21 @@ export const DeliveryLeadView: React.FC = () => {
 
   // Tomorrow date string for advance 4-wheeler planning
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
   const isTomorrowView = selectedDate === tomorrowStr;
+
+  // WARNING BANNER: Unassigned deliveries for TODAY
+  const unassignedTodayOrders = orders.filter(o => 
+    o.order_type === 'home_delivery' && 
+    o.delivery_date === todayStr &&
+    !['delivered', 'cancelled'].includes(o.status) &&
+    (o.assignment_type === 'unassigned' || !o.assigned_delivery_user_id)
+  );
+
+  // Unassigned on the currently selected date view
+  const unassignedSelectedDateOrders = dateHomeOrders.filter(
+    o => o.assignment_type === 'unassigned' || !o.assigned_delivery_user_id
+  );
 
   const handleCopyFourWheelerText = (order: Order) => {
     const formattedDate = new Date(order.delivery_date).toLocaleDateString('en-IN', {
@@ -93,7 +107,7 @@ export const DeliveryLeadView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/60">
         <div>
           <h1 className="text-2xl font-serif font-bold text-gray-900 flex items-center gap-2">
-            Delivery Lead Dispatch Board
+            Delivery Assignment
             <span className="text-xs bg-amber-600 text-white font-sans font-semibold px-2 py-0.5 rounded-full">
               Fleet & Allotment
             </span>
@@ -137,6 +151,34 @@ export const DeliveryLeadView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* HEADER WARNING BANNER FOR DELIVERY LEAD: Unassigned deliveries for TODAY */}
+      {unassignedTodayOrders.length > 0 && (
+        <div className="p-4 rounded-xl bg-rose-50 border-2 border-rose-400 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-rose-500 text-white font-black">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-rose-900">
+                Action Required: {unassignedTodayOrders.length} Unassigned Home {unassignedTodayOrders.length === 1 ? 'Delivery' : 'Deliveries'} for Today!
+              </div>
+              <p className="text-[11px] text-rose-800 mt-0.5">
+                Orders are pending vehicle / driver allocation. Either newly created or a previously assigned rider was marked Off Duty.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedDate(todayStr)}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-xs whitespace-nowrap transition-colors"
+            >
+              View Today&apos;s Unassigned ({unassignedTodayOrders.length})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Advance 4-Wheeler Planning Notice */}
       {isTomorrowView && (

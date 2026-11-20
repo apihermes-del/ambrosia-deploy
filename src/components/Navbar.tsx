@@ -28,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
     { id: 'desk', label: 'Customer Care & Booking', icon: Headphones, allowedRoles: ['super_admin', 'customer_care'] },
     { id: 'calendar', label: 'Slot Calendar & Pricing', icon: Calendar, allowedRoles: ['super_admin', 'customer_care', 'delivery_lead'] },
     { id: 'kitchen', label: 'Cake Setting & Kitchen', icon: Cake, allowedRoles: ['super_admin', 'cake_setting', 'customer_care'] },
-    { id: 'delivery_lead', label: 'Delivery Lead Dispatch', icon: Navigation, allowedRoles: ['super_admin', 'delivery_lead', 'customer_care'] },
+    { id: 'delivery_lead', label: 'Delivery Assignment', icon: Navigation, allowedRoles: ['super_admin', 'delivery_lead', 'customer_care'] },
     { id: 'delivery', label: 'Driver App View', icon: Truck, allowedRoles: ['super_admin', 'delivery', 'delivery_lead', 'customer_care'] },
     { id: 'outlet', label: 'Outlet Counter Pickups', icon: Store, allowedRoles: ['super_admin', 'customer_care', 'cake_setting', 'outlet'] },
     { id: 'admin', label: 'Closeout & Settlements', icon: ShieldCheck, allowedRoles: ['super_admin', 'customer_care', 'delivery_lead'] },
