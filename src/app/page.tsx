@@ -16,10 +16,21 @@ import { LoginModal } from '@/components/LoginModal';
 import { Lock, ArrowRight } from 'lucide-react';
 
 function MainAppContent() {
-  const { currentUser } = useApp();
+  const { currentUser, authInitialized } = useApp();
   const [activeTab, setActiveTab] = useState('desk');
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // While checking saved session on initial load, show clean loading placeholder (prevents flash)
+  if (!authInitialized) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-bold text-sm animate-pulse">
+          A
+        </div>
+      </div>
+    );
+  }
 
   // If user is NOT logged in, show Apple-style security lock screen
   if (!currentUser) {

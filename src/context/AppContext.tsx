@@ -21,6 +21,7 @@ interface AppContextType {
   orders: Order[];
   logs: OrderLog[];
   currentUser: UserProfile | null;
+  authInitialized: boolean;
   users: UserProfile[];
   addUser: (name: string, phone: string, role: UserProfile['role'], department?: string) => void;
   removeUser: (userId: string) => void;
@@ -98,15 +99,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return mockUsers;
   });
 
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ambrosia_current_user');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authInitialized, setAuthInitialized] = useState<boolean>(false);
+
+  // Restore session from localStorage once mounted
+  useEffect(() => {
+    const saved = localStorage.getItem('ambrosia_current_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.id) {
+          setCurrentUser(parsed);
+        }
+      } catch (e) {
+        console.error(e);
       }
     }
-    return null;
-  });
+    setAuthInitialized(true);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ambrosia_team_users', JSON.stringify(users));
@@ -674,6 +684,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       orders,
       logs,
       currentUser,
+      authInitialized,
       users,
       addUser,
       removeUser,
