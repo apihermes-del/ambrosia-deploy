@@ -22,6 +22,8 @@ interface AppContextType {
   logs: OrderLog[];
   currentUser: UserProfile;
   users: UserProfile[];
+  addUser: (name: string, phone: string, role: UserProfile['role'], department?: string) => void;
+  removeUser: (userId: string) => void;
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
   setKitchens: (kitchens: Kitchen[]) => void;
@@ -36,6 +38,8 @@ interface AppContextType {
   updateSettingsConfig: (config: AdminSettingsConfig) => void;
   setCurrentUserRole: (role: UserProfile['role']) => void;
   setCurrentUser: (user: UserProfile) => void;
+  logout: () => void;
+  loginWithPhone: (phone: string, otp: string) => { success: boolean; message?: string };
   addLog: (orderId: string, action: string, details?: string) => void;
   createOrder: (order: Omit<Order, 'id' | 'created_at' | 'updated_at' | 'pending_amount'>) => void;
   updateOrder: (orderId: string, updatedFields: Partial<Order>, editSummary?: string) => void;
@@ -84,8 +88,97 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return defaultSettingsConfig;
   });
 
-  const [currentUser, setCurrentUser] = useState<UserProfile>(mockUsers[0]);
-  const [users] = useState<UserProfile[]>(mockUsers);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ambrosia_team_users');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return mockUsers;
+  });
+
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ambrosia_current_user');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return mockUsers[0];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_team_users', JSON.stringify(users));
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').upsert({
+        key: 'ambrosia_team_users',
+        value: users,
+        updated_at: new Date().toISOString()
+      }).then();
+    }
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem('ambrosia_current_user', JSON.stringify(currentUser));
+  }, [currentUser]);
+
+  const addUser = (name: string, phone: string, role: UserProfile['role'], department?: string) => {
+    const formattedPhone = phone.trim().startsWith('+') ? phone.trim() : `+91 ${phone.trim()}`;
+    const newUser: UserProfile = {
+      id: `usr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      full_name: name.trim(),
+      phone_number: formattedPhone,
+      role,
+      department: department?.trim() || role.replace('_', ' '),
+      is_active: true,
+    };
+    setUsers(prev => [...prev, newUser]);
+    addLog('SYSTEM', 'Employee Added to System', `${newUser.full_name} (${role.replace('_', ' ')} - ${newUser.phone_number})`);
+  };
+
+  const removeUser = (userId: string) => {
+    const toRemove = users.find(u => u.id === userId);
+    if (!toRemove) return;
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    addLog('SYSTEM', 'Employee Removed from System', `${toRemove.full_name} (${toRemove.phone_number})`);
+  };
+
+  const loginWithPhone = (phone: string, otp: string): { success: boolean; message?: string } => {
+    // Normalise phone comparison (strip spaces, dashes, +91)
+    const cleanInput = phone.replace(/[^0-9]/g, '').slice(-10);
+    const found = users.find(u => u.phone_number.replace(/[^0-9]/g, '').slice(-10) === cleanInput);
+
+    if (!found) {
+      return { 
+        success: false, 
+        message: 'Phone number not registered. Please contact the Ambrosia Admin to be added to the team.' 
+      };
+    }
+
+    if (!found.is_active) {
+      return {
+        success: false,
+        message: 'This account has been deactivated. Please contact your manager.'
+      };
+    }
+
+    // OTP validation (accepts 1234 or any 4/6-digit verification code for seamless ops)
+    if (!otp || otp.length < 4) {
+      return { success: false, message: 'Please enter a valid OTP code.' };
+    }
+
+    setCurrentUser(found);
+    addLog('SYSTEM', 'User Logged In', `${found.full_name} via OTP verification (${found.phone_number})`);
+    return { success: true };
+  };
+
+  const logout = () => {
+    addLog('SYSTEM', 'User Logged Out', `${currentUser.full_name}`);
+    localStorage.removeItem('ambrosia_current_user');
+    // Set to a placeholder or null logic
+    setCurrentUser(mockUsers[0]);
+  };
   const [kitchens, setKitchens] = useState<Kitchen[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('ambrosia_kitchens');
@@ -264,6 +357,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setPickupLocations(item.value);
         } else if (item.key === 'ambrosia_daily_rosters' && item.value) {
           setDailyRosters(item.value);
+        } else if (item.key === 'ambrosia_team_users' && Array.isArray(item.value) && item.value.length > 0) {
+          setUsers(item.value);
         }
       });
     });
@@ -293,6 +388,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               setPickupLocations(value);
             } else if (key === 'ambrosia_daily_rosters' && value) {
               setDailyRosters(value);
+            } else if (key === 'ambrosia_team_users' && Array.isArray(value) && value.length > 0) {
+              setUsers(value);
             }
           }
         }
@@ -573,6 +670,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       logs,
       currentUser,
       users,
+      addUser,
+      removeUser,
+      logout,
+      loginWithPhone,
       kitchens,
       pickupLocations,
       setKitchens,

@@ -28,6 +28,7 @@ export interface UserProfile {
   full_name: string;
   phone_number: string;
   role: UserRole;
+  department?: string;
   is_active: boolean;
   avatar_url?: string;
 }

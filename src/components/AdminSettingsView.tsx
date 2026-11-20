@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { UserProfile } from '@/types';
 import { 
   Sliders, 
   CheckCircle2, 
@@ -27,7 +28,10 @@ export const AdminSettingsView: React.FC = () => {
     addPickupLocation, 
     removePickupLocation, 
     addKitchen, 
-    removeKitchen, 
+    removeKitchen,
+    users,
+    addUser,
+    removeUser,
     currentUser 
   } = useApp();
 
@@ -43,6 +47,12 @@ export const AdminSettingsView: React.FC = () => {
   const [totalDriversInput, setTotalDriversInput] = useState(settingsConfig.totalDeliveryEmployees);
   const [maxDeliveriesPerDriver, setMaxDeliveriesPerDriver] = useState(settingsConfig.maxDeliveriesPerDriverPerSlot || 1);
   const [defaultLeadTimeInput, setDefaultLeadTimeInput] = useState(settingsConfig.defaultLeadTimeMinutes || 120);
+
+  // New employee state
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newEmployeePhone, setNewEmployeePhone] = useState('');
+  const [newEmployeeRole, setNewEmployeeRole] = useState<UserProfile['role']>('customer_care');
+  const [newEmployeeDepartment, setNewEmployeeDepartment] = useState('');
 
   // New location inputs
   const [newLocationName, setNewLocationName] = useState('');
@@ -84,6 +94,24 @@ export const AdminSettingsView: React.FC = () => {
     if (!newKitchenName.trim()) return;
     addKitchen(newKitchenName.trim());
     setNewKitchenName('');
+  };
+
+  const handleAddEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeName.trim() || !newEmployeePhone.trim()) {
+      alert('Please enter employee name and phone number');
+      return;
+    }
+    addUser(newEmployeeName, newEmployeePhone, newEmployeeRole, newEmployeeDepartment);
+    setNewEmployeeName('');
+    setNewEmployeePhone('');
+    setNewEmployeeDepartment('');
+  };
+
+  const handleRemoveEmployee = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to remove ${name} from the system? They will no longer be able to log in.`)) {
+      removeUser(id);
+    }
   };
 
   if (!isSuperAdmin) {
@@ -440,6 +468,154 @@ export const AdminSettingsView: React.FC = () => {
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Kitchen
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 6: User & Employee Management (Role & Phone Login) */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">6. Employee & User Account Management</h2>
+                <p className="text-[11px] text-gray-500">Configure authorised staff, assigned department, and mobile number used for OTP login</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 bg-indigo-100 text-indigo-900 rounded-lg">
+              {users.length} Active Staff
+            </span>
+          </div>
+
+          {/* Current Staff List */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
+                <tr>
+                  <th className="py-2.5 px-3">Name</th>
+                  <th className="py-2.5 px-3">Department / Role</th>
+                  <th className="py-2.5 px-3">Login Phone (OTP)</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map(u => (
+                  <tr key={u.id} className="hover:bg-indigo-50/20">
+                    <td className="py-2.5 px-3 font-semibold text-gray-900">
+                      {u.full_name}
+                      {u.id === currentUser.id && (
+                        <span className="ml-1.5 text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
+                          YOU
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800">
+                        {u.role.replace('_', ' ')}
+                      </span>
+                      {u.department && u.department !== u.role && (
+                        <span className="text-[10px] text-gray-500 ml-1.5">({u.department})</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-medium text-gray-700">
+                      {u.phone_number}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      {u.id !== currentUser.id && users.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEmployee(u.id, u.full_name)}
+                          className="px-2.5 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors font-medium flex items-center gap-1 ml-auto"
+                          title="Remove employee from organisation"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 italic">Protected</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add New Employee Form */}
+          <div className="pt-4 border-t border-gray-100 bg-[#FBFBFD] p-4 rounded-xl border">
+            <h3 className="text-xs font-bold text-gray-900 mb-3 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-indigo-600" />
+              Add New Employee / Team Member:
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rahul Nair"
+                  value={newEmployeeName}
+                  onChange={e => setNewEmployeeName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                  Department / System Role <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newEmployeeRole}
+                  onChange={e => setNewEmployeeRole(e.target.value as UserProfile['role'])}
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-medium"
+                >
+                  <option value="customer_care">Customer Care Desk</option>
+                  <option value="cake_setting">Cake Setting & Kitchen</option>
+                  <option value="delivery_lead">Delivery Assignment Lead</option>
+                  <option value="delivery">Delivery Rider</option>
+                  <option value="outlet">Outlet Counter Handover</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                  Department Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Morning Shift Kitchen"
+                  value={newEmployeeDepartment}
+                  onChange={e => setNewEmployeeDepartment(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                  Mobile Number (OTP Login) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 9847012349"
+                  value={newEmployeePhone}
+                  onChange={e => setNewEmployeePhone(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={handleAddEmployee}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Register Employee
               </button>
             </div>
           </div>

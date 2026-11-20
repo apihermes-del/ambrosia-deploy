@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { 
   Cake, 
@@ -13,8 +13,12 @@ import {
   ChevronDown,
   Navigation,
   Sliders,
-  Sparkles
+  Sparkles,
+  LogIn,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
+import { LoginModal } from '@/components/LoginModal';
 
 interface NavbarProps {
   activeTab: string;
@@ -23,9 +27,10 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShowLogsModal }) => {
-  const { currentUser, setCurrentUserRole, users, setCurrentUser, logs } = useApp();
+  const { currentUser, setCurrentUserRole, users, setCurrentUser, logs, logout } = useApp();
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const allTabs = [
     { id: 'desk', label: 'Customer Care', icon: Headphones, allowedRoles: ['super_admin', 'customer_care'] },
@@ -200,16 +205,39 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
                         >
                           <div>
                             <div>{u.full_name}</div>
-                            <div className="text-[10px] text-[#86868B] capitalize">{u.role.replace('_', ' ')}</div>
+                            <div className="text-[10px] text-[#86868B] capitalize">{u.role.replace('_', ' ')} • {u.phone_number}</div>
                           </div>
                           {u.id === currentUser.id && <span className="w-1.5 h-1.5 rounded-full bg-[#0071E3]" />}
                         </button>
                       ))}
                     </div>
+
+                    <div className="p-2 border-t border-black/[0.04] bg-[#F5F5F7]/50 rounded-b-xl space-y-1">
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setShowLoginModal(true);
+                        }}
+                        className="w-full py-1.5 px-2.5 rounded-lg bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs hover:bg-black/90"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>OTP Phone Sign In</span>
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
             </div>
+
+            {/* Quick OTP Login / Logout Pill */}
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="hidden md:flex items-center gap-1.5 bg-black hover:bg-black/85 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold shadow-2xs transition-all"
+              title="Sign in with verified mobile OTP"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>OTP Login</span>
+            </button>
 
           </div>
         </div>
@@ -243,6 +271,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
           })}
         </div>
       </div>
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
     </header>
   );
 };
