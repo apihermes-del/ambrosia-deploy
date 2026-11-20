@@ -3,6 +3,7 @@ export type UserRole =
   | 'customer_care'
   | 'cake_setting'
   | 'delivery'
+  | 'delivery_lead'
   | 'outlet';
 
 export type OrderType = 'home_delivery' | 'outlet_pickup';
@@ -17,8 +18,10 @@ export type OrderStatus =
   | 'cancelled';
 
 export type ItemStatus = 'pending' | 'preparing' | 'ready';
-export type PaymentStatus = 'paid' | 'partial' | 'pending_cod';
+export type PaymentStatus = 'paid' | 'partial' | 'pending_cod' | 'credit';
 export type PaymentMode = 'cash' | 'upi_qr' | 'card' | 'online' | 'none';
+
+export type AssignmentType = 'driver' | 'porter_uber' | 'four_wheeler' | 'unassigned';
 
 export interface UserProfile {
   id: string;
@@ -51,13 +54,33 @@ export interface OrderItem {
   size_or_weight: string;
   quantity: number;
   cake_message?: string;
-  egg_preference: 'eggless' | 'with_egg';
   special_instructions?: string;
   lead_time_minutes: number;
   kitchen_id?: string;
   status: ItemStatus;
   photo_url?: string;
   ready_at?: string;
+}
+
+export interface OrderLog {
+  id: string;
+  order_id: string;
+  timestamp: string;
+  user_name: string;
+  user_role: string;
+  action: string;
+  details?: string;
+}
+
+export interface DeliveryPricingConfig {
+  freeRadiusKm: number;
+  firstExtraKmCharge: number;
+  perExtraKmCharge: number;
+  bakeryAddress: string;
+  bakeryCoordinates: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export interface Order {
@@ -71,12 +94,20 @@ export interface Order {
   delivery_area: string;
   delivery_address?: string;
   delivery_landmark?: string;
+  delivery_pincode?: string;
   google_maps_link?: string;
+  delivery_distance_km?: number;
+  delivery_charge?: number;
   delivery_date: string;
   delivery_time_slot: string;
   target_delivery_time: string;
   status: OrderStatus;
-  assigned_delivery_user_id?: string;
+  
+  // Assignment details
+  assignment_type: AssignmentType;
+  assigned_delivery_user_id?: string; // driver ID if assignment_type === 'driver'
+  third_party_reference?: string;    // e.g. Porter booking ID or 4-wheeler driver note
+  
   pickup_location_id?: string;
   total_amount: number;
   advance_paid: number;
@@ -85,10 +116,16 @@ export interface Order {
   delivery_payment_collected?: number;
   delivery_payment_mode?: PaymentMode;
   special_notes?: string;
+  
+  is_edited_flag?: boolean; // Flagged when customer care modifies an active order
+  edited_summary?: string;
+  
+  // Day closeout flags
+  driver_day_closed?: boolean;
+  driver_day_closed_at?: string;
+  admin_day_reconciled?: boolean;
+  
   created_at: string;
   updated_at: string;
   items: OrderItem[];
-  // Joined fields
-  assigned_driver?: UserProfile;
-  pickup_location?: PickupLocation;
 }
