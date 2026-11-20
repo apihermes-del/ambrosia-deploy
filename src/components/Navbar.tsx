@@ -215,9 +215,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
         </div>
       </div>
 
-      {/* Modern Minimalist Horizontal Tab Navigation (Horizontal Scrollable on Mobile with Touch Momentum) */}
+      {/* Modern Minimalist Horizontal Tab Navigation (Touch & Click optimized) */}
       <div className="border-t border-black/[0.04] bg-[#F5F5F7] px-3 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5 overflow-x-auto py-2 scroll-smooth -mx-1 px-1 touch-pan-x">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto py-2 scroll-smooth no-scrollbar">
           {visibleTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -225,11 +225,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, setShow
               <button
                 key={tab.id}
                 type="button"
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setActiveTab(tab.id);
+                }}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all flex-shrink-0 select-none ${
                   isActive 
                     ? 'bg-black text-white font-semibold shadow-xs' 
-                    : 'text-[#6E6E73] hover:text-[#1D1D1F] bg-white sm:bg-transparent border border-black/[0.05] sm:border-transparent'
+                    : 'text-[#6E6E73] hover:text-[#1D1D1F] bg-white sm:bg-transparent border border-black/[0.06] sm:border-transparent'
                 }`}
               >
                 <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#86868B]'}`} />
