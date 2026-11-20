@@ -23,7 +23,8 @@ interface AppContextType {
   users: UserProfile[];
   kitchens: Kitchen[];
   pickupLocations: PickupLocation[];
-  onDutyDrivers: string[];
+  onDutyDrivers: string[]; // for backwards compatibility / today
+  getOnDutyDriversForDate: (date: string) => string[];
   settingsConfig: AdminSettingsConfig;
   updateSettingsConfig: (config: AdminSettingsConfig) => void;
   setCurrentUserRole: (role: UserProfile['role']) => void;
@@ -35,7 +36,7 @@ interface AppContextType {
   updateOrderStatus: (orderId: string, status: OrderStatus, additionalData?: Partial<Order>, actionNote?: string) => void;
   updateItemStatus: (orderId: string, itemId: string, status: ItemStatus, kitchenId?: string, photoUrl?: string) => void;
   assignVehicleOrDriver: (orderId: string, assignmentType: AssignmentType, driverUserId?: string, thirdPartyRef?: string) => void;
-  toggleDriverDuty: (driverUserId: string) => void;
+  toggleDriverDuty: (driverUserId: string, date?: string) => void;
   markDelivered: (orderId: string, paymentCollected: number, paymentMode: PaymentMode) => void;
   markCollected: (orderId: string) => void;
   updateTallySINumber: (orderId: string, tallySINumber: string) => void;
@@ -80,7 +81,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [users] = useState<UserProfile[]>(mockUsers);
   const [kitchens] = useState<Kitchen[]>(mockKitchens);
   const [pickupLocations] = useState<PickupLocation[]>(mockPickupLocations);
-  const [onDutyDrivers, setOnDutyDrivers] = useState<string[]>(['u5', 'u6']);
+  const [dailyRosters, setDailyRosters] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const saved = localStorage.getItem('ambrosia_daily_rosters');
+    if (saved) {
+      try { 
+        setDailyRosters(JSON.parse(saved)); 
+        return;
+      } catch (e) { console.error(e); }
+    }
+    const today = new Date().toISOString().split('T')[0];
+    setDailyRosters({
+      [today]: ['u5', 'u6'], // Default Deepu & Suresh on duty today
+    });
+  }, []);
+
+  const [todayStr, setTodayStr] = useState<string>('');
+
+  useEffect(() => {
+    setTodayStr(new Date().toISOString().split('T')[0]);
+  }, []);
+
+  const onDutyDrivers = dailyRosters[todayStr] || ['u5', 'u6'];
+
+  useEffect(() => {
+    if (Object.keys(dailyRosters).length > 0) {
+      localStorage.setItem('ambrosia_daily_rosters', JSON.stringify(dailyRosters));
+    }
+  }, [dailyRosters]);
 
   useEffect(() => {
     localStorage.setItem('ambrosia_orders_v3', JSON.stringify(orders));
@@ -238,13 +267,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addLog(orderId, 'Vehicle/Delivery Assignment', desc);
   };
 
-  const toggleDriverDuty = (driverUserId: string) => {
-    const isNowDuty = !onDutyDrivers.includes(driverUserId);
-    setOnDutyDrivers(prev => 
-      isNowDuty ? [...prev, driverUserId] : prev.filter(id => id !== driverUserId)
-    );
+  const getOnDutyDriversForDate = (date: string): string[] => {
+    return dailyRosters[date] || [];
+  };
+
+  const toggleDriverDuty = (driverUserId: string, targetDate?: string) => {
+    const dateKey = targetDate || new Date().toISOString().split('T')[0];
+    const currentOnDuty = dailyRosters[dateKey] || [];
+    const isNowDuty = !currentOnDuty.includes(driverUserId);
+    
+    const updated = isNowDuty 
+      ? [...currentOnDuty, driverUserId] 
+      : currentOnDuty.filter(id => id !== driverUserId);
+
+    setDailyRosters(prev => ({
+      ...prev,
+      [dateKey]: updated,
+    }));
+
     const driver = users.find(u => u.id === driverUserId);
-    addLog('ROSTER', `Driver Duty: ${driver?.full_name}`, isNowDuty ? 'Marked ON DUTY' : 'Marked OFF DUTY');
+    addLog(
+      'ROSTER', 
+      `Driver Duty: ${driver?.full_name} (${dateKey})`, 
+      isNowDuty ? 'Marked ON DUTY' : 'Marked OFF DUTY'
+    );
   };
 
   const markDelivered = (orderId: string, paymentCollected: number, paymentMode: PaymentMode) => {
@@ -329,6 +375,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       kitchens,
       pickupLocations,
       onDutyDrivers,
+      getOnDutyDriversForDate,
       settingsConfig,
       updateSettingsConfig,
       setCurrentUserRole,

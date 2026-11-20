@@ -22,7 +22,7 @@ export const DeliveryLeadView: React.FC = () => {
   const { 
     orders, 
     users, 
-    onDutyDrivers, 
+    getOnDutyDriversForDate, 
     toggleDriverDuty, 
     assignVehicleOrDriver, 
     currentUser 
@@ -35,7 +35,10 @@ export const DeliveryLeadView: React.FC = () => {
 
   // Delivery boys
   const deliveryBoys = users.filter(u => u.role === 'delivery');
-  const onDutyDeliveryBoys = deliveryBoys.filter(u => onDutyDrivers.includes(u.id));
+  
+  // Date-specific on-duty drivers list
+  const onDutyDriverIdsForDate = getOnDutyDriversForDate(selectedDate);
+  const onDutyDeliveryBoys = deliveryBoys.filter(u => onDutyDriverIdsForDate.includes(u.id));
 
   // Orders for chosen date
   const dateHomeOrders = orders.filter(o => 
@@ -150,21 +153,21 @@ export const DeliveryLeadView: React.FC = () => {
         </div>
       )}
 
-      {/* Duty Roster Row */}
+      {/* Duty Roster Row (Specific to the chosen date) */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs">
         <div className="flex items-center justify-between border-b border-gray-100 pb-2.5 mb-3">
           <div className="flex items-center gap-2">
             <UserCheck className="w-4 h-4 text-amber-600" />
             <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-              Daily Attendance Roster ({onDutyDrivers.length} on duty)
+              Attendance Roster for {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })} ({onDutyDeliveryBoys.length} on duty)
             </h3>
           </div>
-          <span className="text-[11px] text-gray-500">Tap to toggle driver on/off duty</span>
+          <span className="text-[11px] text-gray-500">Tap to toggle on/off duty for this specific date</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2.5">
           {deliveryBoys.map(driver => {
-            const isOnDuty = onDutyDrivers.includes(driver.id);
+            const isOnDuty = onDutyDriverIdsForDate.includes(driver.id);
             const assignedOrdersCount = orders.filter(
               o => o.assigned_delivery_user_id === driver.id && o.delivery_date === selectedDate
             ).length;
@@ -172,7 +175,7 @@ export const DeliveryLeadView: React.FC = () => {
             return (
               <button
                 key={driver.id}
-                onClick={() => toggleDriverDuty(driver.id)}
+                onClick={() => toggleDriverDuty(driver.id, selectedDate)}
                 className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
                   isOnDuty 
                     ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-200' 
